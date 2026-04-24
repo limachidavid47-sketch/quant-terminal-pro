@@ -7,14 +7,14 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. CONFIGURACIÓN Y LOGIN BLINDADO
 # ==========================================
-st.set_page_config(page_title="Quant Elite V15", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V16", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     if "password_correct" not in st.session_state:
         st.markdown("""
         <style>
         .stApp { background-color: #05080F; color: #F8FAFC; }
-        .login-box { background: #0F172A; border: 1px solid #334155; border-radius: 15px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); text-align: center; }
+        .login-box { background: #0F172A; border: 1px solid #334155; border-radius: 15px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); text-align: center; margin-top: 10vh; }
         .login-title { color: #10B981; font-size: 28px; font-weight: 900; letter-spacing: 2px; margin-bottom: 5px; }
         </style>
         """, unsafe_allow_html=True)
@@ -22,8 +22,8 @@ def check_password():
         col1, col2, col3 = st.columns([1, 1.5, 1])
         with col2:
             st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-            st.markdown("<div class='login-title'>⚡ TERMINAL QUANT V15</div>", unsafe_allow_html=True)
-            st.markdown("<p style='color:#64748B; margin-bottom:20px;'>Arquitectura HFT (Caché 6H)</p>", unsafe_allow_html=True)
+            st.markdown("<div class='login-title'>⚡ TERMINAL QUANT V16</div>", unsafe_allow_html=True)
+            st.markdown("<p style='color:#64748B; margin-bottom:20px;'>Sistema Autónomo HFT + Sniper</p>", unsafe_allow_html=True)
             
             u = st.text_input("Usuario", key="login_u")
             p = st.text_input("Contraseña", type="password", key="login_p")
@@ -40,11 +40,10 @@ def check_password():
 if not check_password(): st.stop()
 
 # ==========================================
-# 2. MOTOR DE DATOS MULTI-FRECUENCIA (TU IDEA)
+# 2. MOTOR DE DATOS ANTI-BLOQUEO
 # ==========================================
 API_KEY = "F163TaN2efiwM8Ejb3xj0FWaeFAWzQgjbW8bPcuQwi9-ct_ZD4g"
 
-# PETICIÓN LIGERA: Solo horarios y streams (Cada 60 segundos)
 @st.cache_data(ttl=60)
 def call_api_live(game_slug, endpoint, params_str=""):
     url = f"https://api.pandascore.co/{game_slug}/{endpoint}?{params_str}"
@@ -54,40 +53,37 @@ def call_api_live(game_slug, endpoint, params_str=""):
         return res.json() if res.status_code == 200 else []
     except: return []
 
-# PETICIÓN PESADA: Trabajo Sucio y Estadísticas (CADA 6 HORAS = 21600 segundos)
-@st.cache_data(ttl=21600)
-def call_api_history(game_slug, endpoint, params_str=""):
-    url = f"https://api.pandascore.co/{game_slug}/{endpoint}?{params_str}"
+# NUEVA FUNCIÓN: Endpoint corregido y cache de 6 horas
+@st.cache_data(ttl=21600, show_spinner=False)
+def fetch_historical_data(game_slug, team_id):
+    """Descarga los últimos 10 partidos terminados del equipo usando un endpoint más estable."""
+    url = f"https://api.pandascore.co/{game_slug}/matches"
+    params = f"filter[opponent_id]={team_id}&filter[status]=finished&sort=-end_at&per_page=10"
     headers = {"accept": "application/json", "authorization": f"Bearer {API_KEY}"}
+    
     try:
-        res = requests.get(url, headers=headers)
-        return res.json() if res.status_code == 200 else []
-    except: return []
-
-@st.cache_data(ttl=21600) # Se guarda por 6 horas
-def get_raw_history(slug, team_id):
-    """Descarga los últimos 25 partidos cada 6 horas y filtra los 10 reales."""
-    historial_raw = call_api_history(slug, f"teams/{team_id}/matches", "per_page=25")
-    if not historial_raw: return [], 0.50, ['unknown']*5
-    
-    historial_limpio = [m for m in historial_raw if m.get('status') == 'finished' and m.get('winner_id')]
-    historial_limpio = historial_limpio[:10]
-    
-    if not historial_limpio: return [], 0.50, ['unknown']*5
-    
-    wins = 0
-    form = []
-    for match in historial_limpio:
-        if str(match.get('winner_id')) == str(team_id):
-            wins += 1
-            form.append('win')
-        else:
-            form.append('loss')
+        res = requests.get(f"{url}?{params}", headers=headers)
+        if res.status_code == 200:
+            historial = res.json()
+            if not historial: return [], None, ['unknown']*5
             
-    winrate = wins / len(historial_limpio)
-    while len(form) < 5: form.append('unknown') 
-    
-    return historial_limpio, winrate, form[:5]
+            wins = 0
+            form = []
+            for match in historial:
+                # Comparamos IDs convirtiendo todo a string por seguridad
+                if str(match.get('winner_id')) == str(team_id):
+                    wins += 1
+                    form.append('win')
+                else:
+                    form.append('loss')
+                    
+            winrate = wins / len(historial)
+            while len(form) < 5: form.append('unknown') 
+            return historial, winrate, form[:5]
+        else:
+            return [], None, ['unknown']*5
+    except:
+        return [], None, ['unknown']*5
 
 def gestionar_bank(monto=None):
     if not os.path.exists("bank.txt"):
@@ -102,14 +98,14 @@ bank_actual = gestionar_bank()
 # 3. MOTOR CUANTITATIVO MULTI-MERCADO
 # ==========================================
 def motor_cuantitativo_avanzado(hist_t1, hist_t2, wr_t1, wr_t2, mercado, opcion, linea_casino):
-    if not hist_t1 or not hist_t2: return 0.50
+    if wr_t1 is None or wr_t2 is None: return 0.50
+    
     prob_base = 0.50
     total_wr = wr_t1 + wr_t2
     if total_wr == 0: total_wr = 1 
 
     if "Ganador" in mercado:
-        if opcion == "Equipo A": prob_base = wr_t1 / total_wr
-        else: prob_base = wr_t2 / total_wr
+        prob_base = wr_t1 / total_wr if opcion == "Equipo A" else wr_t2 / total_wr
 
     elif "Handicap" in mercado:
         prob_win = wr_t1 / total_wr if opcion == "Equipo A" else wr_t2 / total_wr
@@ -130,8 +126,7 @@ def motor_cuantitativo_avanzado(hist_t1, hist_t2, wr_t1, wr_t2, mercado, opcion,
         prob_base = 0.50 + ((prob_win - 0.50) * 0.7) 
 
     elif "Kills Equipo" in mercado:
-        prob_win = wr_t1 / total_wr if opcion == "Equipo A" else wr_t2 / total_wr
-        prob_base = prob_win
+        prob_base = wr_t1 / total_wr if opcion == "Equipo A" else wr_t2 / total_wr
 
     return max(0.05, min(0.95, prob_base))
 
@@ -148,30 +143,30 @@ else: c_bg = "#0B1120"; c_card = "#1E293B"; c_text = "#F1F5F9"; c_sub = "#94A3B8
 
 st.markdown(f"""
     <style>
-    .stApp {{ background-color: {c_bg}; color: {c_text}; }}
+    .stApp {{ background-color: {c_bg}; color: {c_text}; font-family: 'Inter', sans-serif; }}
     [data-testid="stSidebar"] {{ background-color: {c_card} !important; border-right: 1px solid {c_border}; }}
-    .glass-card {{ background: {c_card}; border: 1px solid {c_border}; border-radius: 12px; padding: 15px; margin-bottom: 10px; }}
-    .team-logo {{ width: 55px; height: 55px; object-fit: contain; margin-bottom: 5px; }}
+    .glass-card {{ background: {c_card}; border: 1px solid {c_border}; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
+    .team-logo {{ width: 60px; height: 60px; object-fit: contain; margin-bottom: 5px; }}
     .team-name {{ font-size: 14px; font-weight: bold; color: {c_text}; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}}
-    .winrate-text {{ font-size: 12px; color: {c_acc}; font-weight: bold; margin-bottom: 5px; text-shadow: 0 0 5px rgba(0,0,0,0.5); }}
+    .winrate-text {{ font-size: 13px; color: {c_acc}; font-weight: 900; margin-bottom: 5px; background: {c_btn}; padding: 2px 8px; border-radius: 10px; display: inline-block; }}
     .form-container {{ display: flex; gap: 4px; justify-content: center; margin-top: 5px; }}
-    .tower-plate {{ width: 12px; height: 6px; border-radius: 2px; }}
-    .win {{ background-color: #10B981; box-shadow: 0 0 3px #10B981; }}
-    .loss {{ background-color: #EF4444; box-shadow: 0 0 3px #EF4444; }}
-    .unknown {{ background-color: #475569; opacity: 0.3; }}
-    .vs-text {{ font-size: 18px; font-weight: bold; color: {c_acc}; margin: 0 10px; }}
-    .badge-live {{ background: #EF4444; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; animation: pulse 2s infinite;}}
-    .badge-time {{ background: {c_acc}; color: {c_bg}; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }}
+    .tower-plate {{ width: 14px; height: 8px; border-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }}
+    .win {{ background-color: #10B981; }}
+    .loss {{ background-color: #EF4444; }}
+    .unknown {{ background-color: #475569; opacity: 0.5; }}
+    .vs-text {{ font-size: 20px; font-weight: bold; color: {c_acc}; margin: 0 10px; }}
+    .badge-live {{ background: #EF4444; color: white; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; animation: pulse 2s infinite;}}
+    .badge-time {{ background: {c_acc}; color: {c_bg}; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }}
     .prob-box {{ background: {c_btn}; padding: 15px; border-radius: 8px; border: 1px solid {c_acc}; text-align: center; margin-bottom: 15px; }}
-    .prob-number {{ font-size: 28px; font-weight: bold; color: {c_acc}; }}
-    .stream-btn {{ background-color: #9146FF; color: white !important; padding: 6px 12px; border-radius: 8px; text-decoration: none; font-size: 11px; font-weight: bold; display: inline-block; margin-top: 15px; border: 1px solid #772CE8; width: 100%; text-align: center; transition: 0.2s; }}
-    .stream-btn:hover {{ background-color: #772CE8; }}
+    .prob-number {{ font-size: 32px; font-weight: 900; color: {c_acc}; }}
+    .stream-btn {{ background-color: #9146FF; color: white !important; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; display: block; margin-top: 15px; text-align: center; transition: 0.2s; }}
+    .stream-btn:hover {{ background-color: #772CE8; transform: scale(1.02); }}
     
-    .sniper-alert {{ background: rgba(16, 185, 129, 0.15); border: 2px solid #10B981; padding: 10px; border-radius: 8px; margin-top: 10px; text-align: center; color: #10B981; font-weight: bold; font-size: 14px; animation: pulse 1.5s infinite; text-transform: uppercase; letter-spacing: 1px; }}
+    .sniper-alert {{ background: rgba(16, 185, 129, 0.15); border: 2px dashed #10B981; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: center; color: #10B981; font-weight: bold; font-size: 16px; animation: pulse 1.5s infinite; text-transform: uppercase; letter-spacing: 1px; }}
     
-    div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; }}
-    div.stButton > button:hover {{ background-color: {c_acc}; color: {c_bg}; }}
-    @keyframes pulse {{ 0% {{opacity: 1;}} 50% {{opacity: 0.5;}} 100% {{opacity: 1;}} }}
+    div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; border-radius: 8px; padding: 10px; }}
+    div.stButton > button:hover {{ background-color: {c_acc}; color: {c_bg}; border-color: {c_acc}; }}
+    @keyframes pulse {{ 0% {{opacity: 1;}} 50% {{opacity: 0.6;}} 100% {{opacity: 1;}} }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -187,8 +182,15 @@ if st.sidebar.button("💾 Guardar Saldo", use_container_width=True):
     st.rerun()
 
 st.sidebar.markdown(f"<h1 style='text-align:center; color:{c_text};'>{bank_actual:.2f} U</h1>", unsafe_allow_html=True)
-st.sidebar.markdown("---")
 
+# --- BOTÓN DE PÁNICO (CACHÉ) ---
+st.sidebar.markdown("---")
+st.sidebar.markdown("### ⚙️ Sistema")
+if st.sidebar.button("🗑️ Limpiar Caché (Forzar Datos Nuevos)", use_container_width=True):
+    st.cache_data.clear() # ¡Esto borra la memoria corrupta!
+    st.sidebar.success("✅ Caché limpio. Los datos se actualizarán.")
+
+st.sidebar.markdown("---")
 juegos_config = {
     "League of Legends": {"slug": "lol", "mercados": ["Ganador del Partido", "Handicap de Kills", "Total Dragones", "Primer Dragón", "Kills Equipo A", "Kills Equipo B", "Duración de Partida"]},
     "Dota 2": {"slug": "dota2", "mercados": ["Ganador del Partido", "Handicap de Kills", "Primer Roshan", "Total Torres", "Kills Equipo A", "Kills Equipo B", "Duración de Partida"]},
@@ -201,11 +203,10 @@ slug = juegos_config[juego_sel]["slug"]
 mercados_list = juegos_config[juego_sel]["mercados"]
 
 # ==========================================
-# 6. RADAR QUANT
+# 6. RADAR QUANT (SNIPER)
 # ==========================================
 st.markdown(f"<h2 style='color:{c_text};'>📡 Radar Quant: {juego_sel}</h2>", unsafe_allow_html=True)
     
-# Usamos call_api_live (60s) para ver quién juega, no saturamos la API
 running = call_api_live(slug, "matches/running", "per_page=10")
 upcoming = call_api_live(slug, "matches/upcoming", "per_page=40&sort=begin_at")
 partidos_totales = running + upcoming
@@ -226,15 +227,15 @@ else:
         if len(opp) < 2: continue
         
         t1, t2 = opp[0]['opponent'], opp[1]['opponent']
-        img1 = t1['image_url'] if t1['image_url'] else 'https://via.placeholder.com/55'
-        img2 = t2['image_url'] if t2['image_url'] else 'https://via.placeholder.com/55'
+        img1 = t1['image_url'] if t1['image_url'] else 'https://via.placeholder.com/60'
+        img2 = t2['image_url'] if t2['image_url'] else 'https://via.placeholder.com/60'
         
-        # HISTORIAL PESADO (6 HORAS) - Se conecta a la nueva función
-        hist_t1, wr_t1, form_t1 = get_raw_history(slug, t1['id'])
-        hist_t2, wr_t2, form_t2 = get_raw_history(slug, t2['id'])
+        # HISTORIAL CORREGIDO - Carga fresca de 6 horas
+        hist_t1, wr_t1, form_t1 = fetch_historical_data(slug, t1['id'])
+        hist_t2, wr_t2, form_t2 = fetch_historical_data(slug, t2['id'])
         
-        txt_wr1 = f"{wr_t1*100:.0f}%" if hist_t1 else "S/D"
-        txt_wr2 = f"{wr_t2*100:.0f}%" if hist_t2 else "S/D"
+        txt_wr1 = f"{wr_t1*100:.0f}%" if wr_t1 is not None else "S/D"
+        txt_wr2 = f"{wr_t2*100:.0f}%" if wr_t2 is not None else "S/D"
         
         html_torres_t1 = "".join([f"<div class='tower-plate {res}'></div>" for res in form_t1])
         html_torres_t2 = "".join([f"<div class='tower-plate {res}'></div>" for res in form_t2])
@@ -286,22 +287,27 @@ else:
                     linea = st.number_input("Línea del Casino:", value=0.0, step=0.5, key=f"l_{i}")
                 
                 with c_der:
-                    # PROCESAMIENTO MATEMÁTICO REAL CON HISTORIAL DE 10 PARTIDAS
                     prob_final = motor_cuantitativo_avanzado(hist_t1, hist_t2, wr_t1, wr_t2, sel_mer, sel_opcion, linea)
                     
                     st.markdown(f"""
                     <div class="prob-box">
-                        <div style="font-size:10px; color:{c_text}; text-transform:uppercase;">Probabilidad Calculada</div>
+                        <div style="font-size:10px; color:{c_text}; text-transform:uppercase;">Probabilidad Algoritmo</div>
                         <div class="prob-number">{prob_final*100:.1f}%</div>
                         <div style="font-size:10px; color:{c_sub};">Cuota Mínima Sugerida: {1/prob_final:.2f}</div>
                     </div>
                     """, unsafe_allow_html=True)
 
-                    cuota = st.number_input("Cuota que pagan:", value=1.00, step=0.01, key=f"c_{i}")
-
-                # --- NUEVA ALERTA SNIPER DINÁMICA (DENTRO DEL EXPANDER) ---
+                # --- SNIPER ALERT MOSTRADA DIRECTAMENTE AQUÍ ---
                 if 0.75 <= prob_final <= 0.99:
-                    st.markdown(f"<div class='sniper-alert'>🎯 SNIPER ALERT: VENTAJA CRÍTICA DETECTADA EN ESTE MERCADO</div>", unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div class='sniper-alert'>
+                        🎯 ¡SNIPER ALERT!<br>
+                        <span style='font-size:12px; color:{c_sub};'>El algoritmo detecta un <b>{prob_final*100:.1f}%</b> de éxito en este mercado. Ejecute operación si la cuota es favorable.</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                st.markdown("---")
+                cuota = st.number_input("Introduce la Cuota del Casino:", value=1.00, step=0.01, key=f"c_{i}")
 
                 if cuota > 1.01: 
                     if cuota > (1/prob_final):
