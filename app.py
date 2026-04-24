@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. CONFIGURACIÓN Y LOGIN BLINDADO
 # ==========================================
-st.set_page_config(page_title="Quant Elite V11", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V12", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     if "password_correct" not in st.session_state:
@@ -25,7 +25,7 @@ def check_password():
         col1, col2, col3 = st.columns([1, 1.5, 1])
         with col2:
             st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-            st.markdown("<div class='login-title'>⚡ TERMINAL QUANT V11</div>", unsafe_allow_html=True)
+            st.markdown("<div class='login-title'>⚡ TERMINAL QUANT V12</div>", unsafe_allow_html=True)
             st.markdown("<p style='color:#64748B; margin-bottom:20px;'>Acceso de Operador (Motor Económico)</p>", unsafe_allow_html=True)
             
             u = st.text_input("Usuario", key="login_u")
@@ -59,6 +59,7 @@ def call_api(game_slug, endpoint, params_str=""):
 
 @st.cache_data(ttl=300)
 def get_team_stats(slug, team_id):
+    # OBTENEMOS EXACTAMENTE LAS ÚLTIMAS 10 PARTIDAS TERMINADAS
     historial = call_api(slug, f"teams/{team_id}/matches", "sort=-end_at&filter[status]=finished&per_page=10")
     if not historial: return None, ['unknown']*5
     
@@ -117,6 +118,8 @@ st.markdown(f"""
     .badge-time {{ background: {c_acc}; color: {c_bg}; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }}
     .prob-box {{ background: {c_btn}; padding: 15px; border-radius: 8px; border: 1px solid {c_acc}; text-align: center; margin-bottom: 15px; transition: all 0.3s ease; }}
     .prob-number {{ font-size: 28px; font-weight: bold; color: {c_acc}; }}
+    .stream-btn {{ background-color: #9146FF; color: white !important; padding: 6px 12px; border-radius: 8px; text-decoration: none; font-size: 11px; font-weight: bold; display: inline-block; margin-top: 15px; border: 1px solid #772CE8; width: 100%; text-align: center; transition: 0.2s; }}
+    .stream-btn:hover {{ background-color: #772CE8; }}
     div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; }}
     div.stButton > button:hover {{ background-color: {c_acc}; color: {c_bg}; }}
     @keyframes pulse {{ 0% {{opacity: 1;}} 50% {{opacity: 0.5;}} 100% {{opacity: 1;}} }}
@@ -152,42 +155,40 @@ mercados_list = juegos_config[juego_sel]["mercados"]
 # 5. ALGORITMO DE VENTAJA DE ORO
 # ==========================================
 def calculate_gold_impact(gold_diff, minute, game_slug):
-    """
-    Calcula cómo la diferencia de oro impacta la probabilidad según el minuto.
-    Retorna un ajuste a la probabilidad base (ej. +0.15 o -0.20).
-    """
     if minute <= 0: return 0
-    
-    # 1. Normalizar el oro según el juego (En Dota hay más oro total que en LoL)
     divisor_oro = 10000 if game_slug == "dota2" else 8000
     impacto_bruto = gold_diff / divisor_oro
-    
-    # 2. Factor de Decadencia por Tiempo (Logístico)
-    # 3k oro al min 10 es letal (multiplicador alto). 3k al min 40 no es nada (multiplicador bajo).
-    # Fórmula: Impacto = Impacto Bruto * (1 / (1 + (minuto / 25)^2))
-    # Esto hace que el impacto del oro caiga rápidamente después del minuto 25-30.
     time_decay = 1 / (1 + (minute / 25)**2)
-    
-    # Ajuste final limitado entre -40% y +40%
     impacto_final = max(-0.40, min(0.40, impacto_bruto * time_decay))
     return impacto_final
 
 # ==========================================
-# 6. RADAR EN VIVO
+# 6. RADAR EN VIVO (16 PARTIDAS: HOY Y MAÑANA)
 # ==========================================
 st.markdown(f"<h2 style='color:{c_text};'>📡 Radar Quant: {juego_sel}</h2>", unsafe_allow_html=True)
     
 running = call_api(slug, "matches/running", "per_page=10")
-upcoming = call_api(slug, "matches/upcoming", "per_page=20&sort=begin_at")
+# Pedimos más partidos para asegurar que cubrimos hoy y mañana
+upcoming = call_api(slug, "matches/upcoming", "per_page=40&sort=begin_at")
 partidos_totales = running + upcoming
-hoy = datetime.now().strftime("%Y-%m-%d")
-partidos_hoy = [p for p in partidos_totales if p['begin_at'].startswith(hoy) or p['status'] == 'running']
 
-if not partidos_hoy:
-    st.info("No hay partidos oficiales programados para hoy.")
+# Fechas para filtro
+hoy = datetime.now()
+mañana = hoy + timedelta(days=1)
+str_hoy = hoy.strftime("%Y-%m-%d")
+str_mañana = mañana.strftime("%Y-%m-%d")
+
+# Filtrar: En vivo OR (Hoy OR Mañana)
+partidos_filtrados = [p for p in partidos_totales if p['status'] == 'running' or p['begin_at'].startswith(str_hoy) or p['begin_at'].startswith(str_mañana)]
+
+# LIMITAR EXACTAMENTE A 16 PARTIDOS
+partidos_mostrar = partidos_filtrados[:16]
+
+if not partidos_mostrar:
+    st.info("No hay partidos oficiales programados para las próximas 48 horas.")
 else:
     col1, col2 = st.columns(2)
-    for i, m in enumerate(partidos_hoy):
+    for i, m in enumerate(partidos_mostrar):
         opp = m.get('opponents', [])
         if len(opp) < 2: continue
         
@@ -204,12 +205,22 @@ else:
         html_torres_t1 = "".join([f"<div class='tower-plate {res}'></div>" for res in form_t1])
         html_torres_t2 = "".join([f"<div class='tower-plate {res}'></div>" for res in form_t2])
         
+        # LÓGICA DE TIEMPO (HOY VS MAÑANA)
         if m['status'] == 'running':
             badge = "<span class='badge-live'>🔴 EN VIVO</span>"
         else:
             dt_utc = datetime.strptime(m['begin_at'], "%Y-%m-%dT%H:%M:%SZ")
-            hora_bol = (dt_utc - timedelta(hours=4)).strftime("%H:%M")
-            badge = f"<span class='badge-time'>🕒 {hora_bol}</span>"
+            dt_bol = dt_utc - timedelta(hours=4)
+            if dt_bol.strftime("%Y-%m-%d") == str_hoy:
+                badge = f"<span class='badge-time'>🕒 Hoy {dt_bol.strftime('%H:%M')}</span>"
+            else:
+                badge = f"<span class='badge-time'>📅 {dt_bol.strftime('%d/%m')} 🕒 {dt_bol.strftime('%H:%M')}</span>"
+
+        # LA RECUPERACIÓN DEL BOTÓN DE STREAMING OFICIAL
+        stream_link = ""
+        if m.get('official_video_url'): stream_link = m['official_video_url']
+        elif m.get('streams_list') and len(m['streams_list']) > 0: stream_link = m['streams_list'][0].get('raw_url', '')
+        boton_stream = f'<a href="{stream_link}" target="_blank" class="stream-btn">📺 Ver Transmisión Oficial</a>' if stream_link else ''
 
         with (col1 if i % 2 == 0 else col2):
             st.markdown(f"""
@@ -232,6 +243,7 @@ else:
                         <div class="form-container">{html_torres_t2}</div>
                     </div>
                 </div>
+                {boton_stream}
             </div>
             """, unsafe_allow_html=True)
 
@@ -256,17 +268,16 @@ else:
                     st.markdown(f"<p style='color:{c_text}; font-size:12px;'>Inserte la ventaja actual del equipo seleccionado ({sel_opcion}):</p>", unsafe_allow_html=True)
                     c_min, c_oro = st.columns(2)
                     min_actual = c_min.number_input("Minuto de Partida:", min_value=1, max_value=60, value=15, key=f"min_{i}")
-                    # Positivo = Oro a favor / Negativo = Oro en contra
                     diff_oro = c_oro.number_input("Dif. de Oro (Ej: -2500):", value=0, step=500, key=f"oro_{i}")
-                    
                     ajuste_oro = calculate_gold_impact(diff_oro, min_actual, slug)
 
-                # --- CÁLCULO FINAL DE PROBABILIDAD ---
+                # --- BALANZA DE PROBABILIDAD (BASADA EN LAS ÚLTIMAS 10 PARTIDAS H2H) ---
                 val_wr1 = wr_t1 if wr_t1 is not None else 0.50
                 val_wr2 = wr_t2 if wr_t2 is not None else 0.50
                 
                 prob_base = 0.50
                 if "Ganador" in sel_mer or "Kills Equipo" in sel_mer or sel_opcion in [t1['name'], t2['name']]:
+                    # Estadística H2H real: Pesa a un equipo frente al otro
                     total_wr = val_wr1 + val_wr2
                     if total_wr > 0:
                         if sel_opcion == t1['name']: prob_base = val_wr1 / total_wr
@@ -274,13 +285,12 @@ else:
                 else:
                     prob_base = 0.50 + (((val_wr1 + val_wr2) / 2) - 0.50) * 0.5 
                 
-                # Aplicamos el motor económico si está activado
                 prob_final = prob_base + ajuste_oro
                 prob_final = max(0.05, min(0.95, prob_final))
 
                 st.markdown(f"""
                 <div class="prob-box">
-                    <div style="font-size:12px; color:{c_text}; text-transform:uppercase;">Probabilidad Calculada</div>
+                    <div style="font-size:12px; color:{c_text}; text-transform:uppercase;">Probabilidad del Modelo</div>
                     <div class="prob-number">{prob_final*100:.1f}%</div>
                     <div style="font-size:10px; color:{c_sub};">Cuota Mínima Sugerida: {1/prob_final:.2f}</div>
                 </div>
