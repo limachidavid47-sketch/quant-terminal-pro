@@ -54,7 +54,7 @@ def gestionar_bank(monto=None):
 bank_actual = gestionar_bank()
 
 # ==========================================
-# 3. CSS (MIDNIGHT BLUE)
+# 3. CSS (BOTÓN DE STREAM AÑADIDO)
 # ==========================================
 st.markdown("""
     <style>
@@ -65,6 +65,16 @@ st.markdown("""
     .vs-text { font-size: 18px; font-weight: bold; color: #38BDF8; margin: 0 15px; }
     .badge-live { background: #EF4444; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; animation: pulse 2s infinite;}
     .badge-time { background: #38BDF8; color: #0F172A; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    
+    /* Diseño del botón de Twitch/YouTube */
+    .stream-btn {
+        background-color: #9146FF; color: white !important; padding: 6px 12px; 
+        border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold;
+        display: inline-block; margin-top: 10px; border: 1px solid #772CE8;
+        transition: 0.3s;
+    }
+    .stream-btn:hover { background-color: #772CE8; transform: translateY(-2px); }
+    
     @keyframes pulse { 0% {opacity: 1;} 50% {opacity: 0.5;} 100% {opacity: 1;} }
     </style>
 """, unsafe_allow_html=True)
@@ -87,7 +97,7 @@ slug = juegos[juego_sel]["slug"]
 mercados_dinamicos = juegos[juego_sel]["mercados"]
 
 # ==========================================
-# 5. RADAR (DOS COLUMNAS Y OPERACIONES)
+# 5. RADAR (STREAMING Y OPERACIONES)
 # ==========================================
 st.markdown(f"### 📡 Radar Activo: {juego_sel}")
 
@@ -108,6 +118,15 @@ else:
         img1 = t1['image_url'] if t1['image_url'] else 'https://via.placeholder.com/50'
         img2 = t2['image_url'] if t2['image_url'] else 'https://via.placeholder.com/50'
         
+        # Extracción inteligente del enlace de Streaming
+        stream_link = ""
+        if m.get('official_video_url'):
+            stream_link = m['official_video_url']
+        elif m.get('streams_list') and len(m['streams_list']) > 0:
+            stream_link = m['streams_list'][0].get('raw_url', '')
+            
+        boton_stream = f'<div style="text-align: center;"><a href="{stream_link}" target="_blank" class="stream-btn">📺 Ver Stream en Vivo</a></div>' if stream_link else ''
+
         if m['status'] == 'running':
             badge = "<span class='badge-live'>🔴 EN VIVO</span>"
         else:
@@ -130,6 +149,7 @@ else:
 <span style="font-weight: bold; font-size: 13px;">{t2['name']}</span>
 </div>
 </div>
+{boton_stream}
 </div>"""
 
         columna_actual = col1 if i % 2 == 0 else col2
@@ -140,26 +160,20 @@ else:
             with st.expander(f"⚙️ Operar {t1['acronym'] if t1.get('acronym') else 'T1'} vs {t2['acronym'] if t2.get('acronym') else 'T2'}"):
                 sel_mer = st.selectbox("Mercado:", mercados_dinamicos, key=f"m_{i}")
                 
-                # --- LÓGICA INTELIGENTE DE MERCADOS ---
                 if "Total" in sel_mer or "Handicap" in sel_mer:
-                    # Si es un mercado de Líneas, mostramos 3 columnas
                     c_lin, c_op, c_cuo = st.columns([1.2, 1.2, 1])
                     linea = c_lin.number_input("Línea (Ej: 26.5):", value=0.0, step=0.5, key=f"l_{i}")
-                    
                     if "Total" in sel_mer:
                         opcion = c_op.selectbox("Opción:", ["Más (+)", "Menos (-)"], key=f"op_{i}")
-                    else: # Handicap
+                    else:
                         opcion = c_op.selectbox("A favor de:", [t1['name'], t2['name']], key=f"op_{i}")
-                        
                     cuota = c_cuo.number_input("Cuota:", value=1.85, step=0.01, key=f"c_{i}")
                 else:
-                    # Si es ganador o primera sangre, solo 2 columnas
                     c_op, c_cuo = st.columns([2, 1])
                     opcion = c_op.selectbox("Equipo:", [t1['name'], t2['name']], key=f"op_{i}")
                     cuota = c_cuo.number_input("Cuota:", value=1.85, step=0.01, key=f"c_{i}")
 
-                # Cálculo de Kelly
-                prob_real = 0.55 # Aquí irá tu WinRate o modelo en el futuro
+                prob_real = 0.55 
                 if cuota > (1/prob_real):
                     kelly = (((cuota - 1) * prob_real) - (1 - prob_real)) / (cuota - 1)
                     stake = (kelly * 0.25) * bank_actual
