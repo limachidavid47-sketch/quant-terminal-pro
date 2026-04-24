@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. CONFIGURACIÓN Y LOGIN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V4", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V5", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     if "password_correct" not in st.session_state:
@@ -24,7 +24,7 @@ def check_password():
 if not check_password(): st.stop()
 
 # ==========================================
-# 2. MOTOR DE DATOS (API PANDASCORE)
+# 2. MOTOR DE DATOS
 # ==========================================
 API_KEY = "F163TaN2efiwM8Ejb3xj0FWaeFAWzQgjbW8bPcuQwi9-ct_ZD4g"
 
@@ -46,8 +46,14 @@ def gestionar_bank(monto=None):
 
 bank_actual = gestionar_bank()
 
+# Inicializador de estado para la cebolla
+if 'cebolla_nivel' not in st.session_state:
+    st.session_state.cebolla_nivel = 0 # 0=Ligas, 1=Equipos, 2=Jugadores
+    st.session_state.id_liga_sel = None
+    st.session_state.id_equipo_sel = None
+
 # ==========================================
-# 3. DISEÑO CSS ACTUALIZADO
+# 3. DISEÑO CSS
 # ==========================================
 st.markdown("""
     <style>
@@ -62,7 +68,6 @@ st.markdown("""
     .loss { background-color: #EF4444; }
     .vs-text { font-size: 18px; font-weight: bold; color: #38BDF8; margin: 0 10px; }
     
-    /* Badges de Tiempo y Stream */
     .badge-live { background: #EF4444; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; animation: pulse 2s infinite;}
     .badge-time { background: #38BDF8; color: #0F172A; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
     .stream-btn {
@@ -71,27 +76,22 @@ st.markdown("""
         display: inline-block; margin-top: 15px; border: 1px solid #772CE8; width: 100%; text-align: center;
     }
     .stream-btn:hover { background-color: #772CE8; }
+    
+    .btn-cebolla { background-color: #1E293B; border: 1px solid #38BDF8; color: white; padding: 10px; border-radius: 8px; width: 100%; text-align: center; font-weight: bold; transition: 0.3s; cursor: pointer;}
+    .btn-cebolla:hover { background-color: #38BDF8; color: #0B1120; }
+    
     @keyframes pulse { 0% {opacity: 1;} 50% {opacity: 0.5;} 100% {opacity: 1;} }
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. SIDEBAR Y MERCADOS
+# 4. SIDEBAR Y MENÚ
 # ==========================================
 st.sidebar.markdown(f"### 🏦 Bankroll: {bank_actual:.2f} U")
 juegos_config = {
-    "League of Legends": {
-        "slug": "lol",
-        "mercados": ["Ganador del Partido", "Handicap de Kills", "Total Kills (Global)", "Kills Equipo A", "Kills Equipo B", "Total Dragones", "Ambos Matan Dragón", "Total Torres", "Duración de Partida", "Total Mapas"]
-    },
-    "Dota 2": {
-        "slug": "dota2",
-        "mercados": ["Ganador del Partido", "Handicap de Kills", "Total Kills (Global)", "Kills Equipo A", "Kills Equipo B", "Primer Roshan", "Total Torres", "Duración de Partida", "Total Mapas"]
-    },
-    "Mobile Legends": {
-        "slug": "mobile-legends",
-        "mercados": ["Ganador del Partido", "Handicap de Kills", "Total Kills", "Primer Lord", "Duración de Partida", "Total Mapas"]
-    }
+    "League of Legends": {"slug": "lol", "mercados": ["Ganador del Partido", "Handicap de Kills", "Total Kills (Global)", "Kills Equipo A", "Kills Equipo B", "Total Dragones", "Ambos Matan Dragón", "Total Torres", "Duración de Partida", "Total Mapas"]},
+    "Dota 2": {"slug": "dota2", "mercados": ["Ganador del Partido", "Handicap de Kills", "Total Kills (Global)", "Kills Equipo A", "Kills Equipo B", "Primer Roshan", "Total Torres", "Duración de Partida", "Total Mapas"]},
+    "Mobile Legends": {"slug": "mobile-legends", "mercados": ["Ganador del Partido", "Handicap de Kills", "Total Kills", "Primer Lord", "Duración de Partida", "Total Mapas"]}
 }
 
 juego_sel = st.sidebar.radio("Disciplina", list(juegos_config.keys()))
@@ -100,6 +100,10 @@ mercados_list = juegos_config[juego_sel]["mercados"]
 
 st.sidebar.markdown("---")
 seccion = st.sidebar.selectbox("Ir a:", ["🔴 Radar En Vivo", "🏆 Base de Datos (Cebolla)", "📚 Enciclopedia de Campeones"])
+
+# Resetear la cebolla si cambias de sección
+if seccion != "🏆 Base de Datos (Cebolla)":
+    st.session_state.cebolla_nivel = 0
 
 # ==========================================
 # 5. PANTALLAS
@@ -126,7 +130,6 @@ if seccion == "🔴 Radar En Vivo":
             img1 = t1['image_url'] if t1['image_url'] else 'https://via.placeholder.com/55'
             img2 = t2['image_url'] if t2['image_url'] else 'https://via.placeholder.com/55'
             
-            # --- ETIQUETAS DE HORA Y STREAM ---
             if m['status'] == 'running':
                 badge = "<span class='badge-live'>🔴 EN VIVO</span>"
             else:
@@ -140,7 +143,7 @@ if seccion == "🔴 Radar En Vivo":
             boton_stream = f'<a href="{stream_link}" target="_blank" class="stream-btn">📺 Ver Partido en Vivo</a>' if stream_link else ''
 
             with (col1 if i % 2 == 0 else col2):
-                tarjeta_html = f"""
+                st.markdown(f"""
                 <div class="glass-card">
                     <div style="margin-bottom: 10px; font-size: 11px; color: #94A3B8; display: flex; justify-content: space-between;">
                         <span>🏆 {m['league']['name']}</span>{badge}
@@ -166,20 +169,24 @@ if seccion == "🔴 Radar En Vivo":
                     </div>
                     {boton_stream}
                 </div>
-                """
-                st.markdown(tarjeta_html, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
-                # --- PANEL DE OPERACIÓN (2 COLUMNAS INTERNAS) ---
+                # --- PANEL DE OPERACIÓN CON SELECTOR AÑADIDO ---
                 with st.expander(f"⚙️ Operar Mercados"):
-                    # Controles divididos para que no se haga largo hacia abajo
                     c_izq, c_der = st.columns(2)
                     
                     with c_izq:
                         sel_mer = st.selectbox("Mercado:", mercados_list, key=f"mer_{i}")
+                        
+                        # AQUÍ LA SOLUCIÓN: Selector dinámico de equipo o Más/Menos
+                        if "Total" in sel_mer or "Duración" in sel_mer:
+                            sel_opcion = st.selectbox("Opción:", ["Más (+)", "Menos (-)"], key=f"op_{i}")
+                        else:
+                            sel_opcion = st.selectbox("A favor de:", [t1['name'], t2['name']], key=f"op_{i}")
+                            
                         linea = st.number_input("Línea Casino:", value=0.0, step=0.5, key=f"l_{i}")
                     
                     with c_der:
-                        # Simulador de probabilidad ajustada según el mercado
                         prob_base = 0.62 
                         if "Dragones" in sel_mer: prob_base = 0.55
                         elif "Duración" in sel_mer: prob_base = 0.58
@@ -188,46 +195,82 @@ if seccion == "🔴 Radar En Vivo":
                         st.markdown(f"<div style='background:rgba(56,189,248,0.1); padding:8px; border-radius:5px; color:#38BDF8; font-size:12px; margin-bottom:10px; text-align:center;'><b>Prob. Calculada: {prob_base*100:.1f}%</b></div>", unsafe_allow_html=True)
                         cuota = st.number_input("Cuota:", value=1.85, step=0.01, key=f"c_{i}")
 
-                    # Cálculo Kelly Seguro abajo
                     if cuota > (1/prob_base):
                         kelly = (((cuota - 1) * prob_base) - (1 - prob_base)) / (cuota - 1)
                         stake = (kelly * 0.25) * bank_actual
                         if stake > 0:
-                            st.success(f"🔥 VALOR. Sugerido {stake:.2f} U")
+                            st.success(f"🔥 VALOR en {sel_opcion}. Sugerido: {stake:.2f} U")
                             if st.button("Confirmar Apuesta", key=f"btn_{i}", use_container_width=True):
                                 gestionar_bank(bank_actual - stake)
                                 st.rerun()
                     else:
                         st.warning(f"⚠️ Cuota sin valor (Mínima justa: {1/prob_base:.2f})")
 
-# --- PANTALLA: BASE DE DATOS (CEBOLLA) ---
+# --- PANTALLA: BASE DE DATOS (CEBOLLA VISUAL) ---
 elif seccion == "🏆 Base de Datos (Cebolla)":
-    st.title("Explorador Estructurado")
-    ligas_raw = call_api(slug, "leagues", "per_page=15")
-    if ligas_raw:
-        nombres_ligas = [l['name'] for l in ligas_raw]
-        liga_sel = st.selectbox("1. Selecciona Liga:", nombres_ligas)
-        id_liga = next(l['id'] for l in ligas_raw if l['name'] == liga_sel)
+    
+    # BOTÓN PARA VOLVER ATRÁS
+    if st.session_state.cebolla_nivel > 0:
+        if st.button("⬅️ Volver Atrás", use_container_width=True):
+            st.session_state.cebolla_nivel -= 1
+            st.rerun()
+
+    # NIVEL 0: LIGAS (Tarjetas)
+    if st.session_state.cebolla_nivel == 0:
+        st.title("🌐 Selecciona una Liga")
+        ligas = call_api(slug, "leagues", "per_page=12")
+        cols = st.columns(4)
+        for idx, l in enumerate(ligas):
+            with cols[idx % 4]:
+                st.markdown(f"<div class='glass-card' style='text-align:center;'><img src='{l['image_url']}' style='width:60px; height:60px; object-fit:contain;'></div>", unsafe_allow_html=True)
+                if st.button(f"{l['name']}", key=f"btn_lig_{l['id']}", use_container_width=True):
+                    st.session_state.id_liga_sel = l['id']
+                    st.session_state.cebolla_nivel = 1
+                    st.rerun()
+
+    # NIVEL 1: EQUIPOS (Tarjetas)
+    elif st.session_state.cebolla_nivel == 1:
+        st.title("🛡️ Selecciona un Equipo")
+        equipos = call_api(slug, f"leagues/{st.session_state.id_liga_sel}/teams", "per_page=16")
+        if equipos:
+            cols = st.columns(4)
+            for idx, e in enumerate(equipos):
+                with cols[idx % 4]:
+                    st.markdown(f"<div class='glass-card' style='text-align:center;'><img src='{e['image_url']}' style='width:60px; height:60px; object-fit:contain;'></div>", unsafe_allow_html=True)
+                    if st.button(f"{e['name']}", key=f"btn_eq_{e['id']}", use_container_width=True):
+                        st.session_state.id_equipo_sel = e
+                        st.session_state.cebolla_nivel = 2
+                        st.rerun()
+        else:
+            st.info("No hay equipos disponibles para esta liga en este momento.")
+
+    # NIVEL 2: JUGADORES Y ESTADÍSTICAS
+    elif st.session_state.cebolla_nivel == 2:
+        equipo = st.session_state.id_equipo_sel
+        st.title(f"📊 Ficha Técnica: {equipo['name']}")
         
-        equipos_raw = call_api(slug, f"leagues/{id_liga}/teams", "per_page=20")
-        if equipos_raw:
-            nombres_equipos = [e['name'] for e in equipos_raw]
-            equipo_sel = st.selectbox("2. Selecciona Equipo:", nombres_equipos)
-            equipo_data = next(e for e in equipos_raw if e['name'] == equipo_sel)
-            
-            st.markdown("---")
-            col_eq, col_jg = st.columns([1, 2])
-            with col_eq:
-                st.image(equipo_data['image_url'] if equipo_data['image_url'] else "https://via.placeholder.com/150", width=120)
-                st.subheader(equipo_data['name'])
-            
-            with col_jg:
-                st.write("**Jugadores:**")
-                jugadores = equipo_data.get('players', [])
-                if jugadores:
-                    for p in jugadores:
-                        st.markdown(f"👤 **{p['name']}** ({p['role'] if p['role'] else 'Pro'})")
-                else: st.write("Datos de plantilla no disponibles.")
+        c_logo, c_stats = st.columns([1, 3])
+        with c_logo:
+            st.image(equipo['image_url'], width=150)
+            st.markdown(f"**Acrónimo:** {equipo.get('acronym', 'N/A')}")
+        
+        with c_stats:
+            st.subheader("👥 Roster Oficial")
+            jugadores = equipo.get('players', [])
+            if jugadores:
+                p_cols = st.columns(3)
+                for i, p in enumerate(jugadores):
+                    with p_cols[i % 3]:
+                        st.markdown(f"""
+                        <div class="glass-card" style="text-align:center; padding:10px;">
+                            <img src="{p['image_url'] if p['image_url'] else 'https://via.placeholder.com/60'}" style="width:60px; height:60px; border-radius:50%; object-fit:cover;"><br>
+                            <b style="color:#38BDF8;">{p['name']}</b><br>
+                            <span style="font-size:11px; color:#94A3B8;">{p['role'] if p['role'] else 'Pro Player'}</span><br>
+                            <span style="font-size:10px; color:#10B981;">Main: Calculando...</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.warning("El equipo no ha hecho pública su plantilla actual.")
 
 # --- PANTALLA: ENCICLOPEDIA ---
 elif seccion == "📚 Enciclopedia de Campeones":
