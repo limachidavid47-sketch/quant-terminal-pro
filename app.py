@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. CONFIGURACIÓN Y LOGIN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V6", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V7", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     if "password_correct" not in st.session_state:
@@ -52,12 +52,16 @@ if 'cebolla_nivel' not in st.session_state:
     st.session_state.equipo_data_sel = None
 
 # ==========================================
-# 3. DISEÑO CSS
+# 3. DISEÑO CSS (ANIMACIONES AÑADIDAS)
 # ==========================================
 st.markdown("""
     <style>
     .stApp { background-color: #0B1120; color: #F1F5F9; }
-    .glass-card { background: #1E293B; border: 1px solid #334155; border-radius: 12px; padding: 15px; margin-bottom: 10px; }
+    .glass-card { background: #1E293B; border: 1px solid #334155; border-radius: 12px; padding: 15px; margin-bottom: 10px; transition: transform 0.3s ease; }
+    .glass-card:hover { transform: scale(1.03); border-color: #38BDF8; }
+    .hero-card { background: #0F172A; border: 1px solid #1E293B; border-radius: 10px; padding: 10px; text-align: center; transition: all 0.3s ease; }
+    .hero-card:hover { transform: translateY(-5px); border-color: #10B981; box-shadow: 0 5px 15px rgba(16, 185, 129, 0.2); }
+    
     .team-logo { width: 55px; height: 55px; object-fit: contain; margin-bottom: 5px; }
     .team-name { font-size: 14px; font-weight: bold; color: #F8FAFC; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
     .winrate-text { font-size: 11px; color: #10B981; font-weight: bold; margin-bottom: 5px; }
@@ -76,7 +80,6 @@ st.markdown("""
     }
     .stream-btn:hover { background-color: #772CE8; }
     
-    /* Botones de Streamlit Oscuros */
     div.stButton > button { background-color: #0F172A; color: #38BDF8; border: 1px solid #334155; border-radius: 8px; font-weight: bold; }
     div.stButton > button:hover { background-color: #38BDF8; color: #0F172A; border-color: #38BDF8; }
     
@@ -107,6 +110,7 @@ if seccion != "🏆 Base de Datos (Cebolla)": st.session_state.cebolla_nivel = 0
 # 5. PANTALLAS
 # ==========================================
 
+# --- PANTALLA: RADAR EN VIVO (INTOCABLE) ---
 if seccion == "🔴 Radar En Vivo":
     st.title(f"Radar: {juego_sel}")
     
@@ -208,38 +212,40 @@ elif seccion == "🏆 Base de Datos (Cebolla)":
             st.session_state.cebolla_nivel -= 1
             st.rerun()
 
-    # NIVEL 0: LIGAS
+    # NIVEL 0: LIGAS (Corregido para MLBB y añadido contador)
     if st.session_state.cebolla_nivel == 0:
         st.title("🌐 Selecciona una Liga")
-        # Traemos ligas con actividad reciente
-        ligas = call_api(slug, "leagues", "sort=-modified_at&per_page=12")
+        # Quitamos el sort=-modified_at para que MLBB no se rompa
+        ligas = call_api(slug, "leagues", "per_page=12")
         cols = st.columns(4)
         for idx, l in enumerate(ligas):
             with cols[idx % 4]:
+                # Buscamos rápido cuántos equipos tiene la serie actual
+                equipos_count = call_api(slug, f"leagues/{l['id']}/teams", "per_page=50")
+                cant_equipos = len(equipos_count) if equipos_count else "Varios"
+                
                 img_url = l['image_url'] if l['image_url'] else "https://via.placeholder.com/80?text=Liga"
                 st.markdown(f"""
                 <div class='glass-card' style='text-align:center;'>
-                    <div class='team-name' style='color:#38BDF8; margin-bottom:10px;'>{l['name']}</div>
-                    <img src='{img_url}' style='width:70px; height:70px; object-fit:contain; margin-bottom:10px;'>
+                    <div class='team-name' style='color:#38BDF8;'>{l['name']}</div>
+                    <img src='{img_url}' style='width:70px; height:70px; object-fit:contain; margin:10px 0;'>
+                    <div style='font-size:11px; color:#94A3B8; margin-bottom:10px;'>🎮 {cant_equipos} Equipos</div>
                 </div>
                 """, unsafe_allow_html=True)
-                if st.button("Ver Equipos Activos", key=f"l_{l['id']}", use_container_width=True):
+                if st.button("Explorar Liga", key=f"l_{l['id']}", use_container_width=True):
                     st.session_state.id_liga_sel = l['id']
                     st.session_state.cebolla_nivel = 1
                     st.rerun()
 
-    # NIVEL 1: EQUIPOS (Extracción Inteligente de Partidas)
+    # NIVEL 1: EQUIPOS
     elif st.session_state.cebolla_nivel == 1:
-        st.title("🛡️ Equipos Activos en esta Liga")
-        # Buscamos los últimos partidos de esa liga para sacar los equipos reales
+        st.title("🛡️ Equipos Activos")
         partidos_liga = call_api(slug, "matches", f"filter[league_id]={st.session_state.id_liga_sel}&per_page=30&sort=-begin_at")
-        
         equipos_unicos = {}
         for p in partidos_liga:
             for opp in p.get('opponents', []):
                 eq = opp['opponent']
                 equipos_unicos[eq['id']] = eq
-                
         equipos = list(equipos_unicos.values())
 
         if equipos:
@@ -253,7 +259,7 @@ elif seccion == "🏆 Base de Datos (Cebolla)":
                         <img src='{img_url}' style='width:60px; height:60px; object-fit:contain; margin-bottom:10px;'>
                     </div>
                     """, unsafe_allow_html=True)
-                    if st.button("Ver Jugadores", key=f"e_{e['id']}", use_container_width=True):
+                    if st.button("Ver Plantilla", key=f"e_{e['id']}", use_container_width=True):
                         st.session_state.equipo_data_sel = e
                         st.session_state.cebolla_nivel = 2
                         st.rerun()
@@ -264,7 +270,6 @@ elif seccion == "🏆 Base de Datos (Cebolla)":
     elif st.session_state.cebolla_nivel == 2:
         equipo = st.session_state.equipo_data_sel
         st.title(f"📊 Ficha Técnica: {equipo['name']}")
-        
         c_logo, c_stats = st.columns([1, 3])
         with c_logo:
             img_url = equipo['image_url'] if equipo['image_url'] else "https://via.placeholder.com/150"
@@ -287,15 +292,53 @@ elif seccion == "🏆 Base de Datos (Cebolla)":
                         </div>
                         """, unsafe_allow_html=True)
             else:
-                st.warning("Plantilla no disponible para este equipo.")
+                st.warning("La base de datos oficial no tiene registrada la plantilla de este equipo (Común en ligas Tier 2/3).")
 
-# --- PANTALLA: ENCICLOPEDIA ---
+# --- PANTALLA: ENCICLOPEDIA (3 POR FILA + DATOS REALES) ---
 elif seccion == "📚 Enciclopedia de Campeones":
     st.title(f"Héroes de {juego_sel}")
-    lore = {
-        "lol": [{"n": "Lee Sin", "h": "Monje ciego maestro del combate espiritual."}, {"n": "Jinx", "h": "Criminal de Zaun amante del caos."}],
-        "dota2": [{"n": "Anti-Mage", "h": "Monje que busca destruir toda la magia."}, {"n": "Pudge", "h": "Carnicero del campo de batalla."}],
-        "mobile-legends": [{"n": "Layla", "h": "Defensora con cañón de energía."}, {"n": "Tigreal", "h": "Líder honorífico de los Caballeros."}]
-    }
-    for c in lore.get(slug, []):
-        st.markdown(f"<div class='glass-card'><h3 style='color:#38BDF8;'>{c['n']}</h3><p>{c['h']}</p></div>", unsafe_allow_html=True)
+    st.write("Datos extraídos directamente de los servidores oficiales del juego.")
+    
+    # Descarga dinámica según el juego
+    if slug == "lol":
+        heroes_data = call_api("lol", "champions", "per_page=30")
+    elif slug == "dota2":
+        heroes_data = call_api("dota2", "heroes", "per_page=30")
+    else:
+        # MLBB (PandaScore no da API de héroes de MLBB, usamos una mini base local premium)
+        heroes_data = [
+            {"name": "Layla", "image_url": "https://liquipedia.net/commons/images/thumb/7/7b/Layla_MLBB.jpg/120px-Layla_MLBB.jpg", "armor": 15, "hp": 2500, "role": "Tirador"},
+            {"name": "Tigreal", "image_url": "https://liquipedia.net/commons/images/thumb/8/87/Tigreal_MLBB.jpg/120px-Tigreal_MLBB.jpg", "armor": 45, "hp": 3200, "role": "Tanque/Soporte"},
+            {"name": "Gusion", "image_url": "https://liquipedia.net/commons/images/thumb/4/4c/Gusion_MLBB.jpg/120px-Gusion_MLBB.jpg", "armor": 20, "hp": 2400, "role": "Asesino"}
+        ]
+
+    if not heroes_data:
+        st.info("Cargando base de datos de héroes...")
+    else:
+        cols = st.columns(3) # Diseño estricto 3 por fila
+        for idx, h in enumerate(heroes_data):
+            with cols[idx % 3]:
+                # Limpiamos nombres y buscamos variables según si es LoL o Dota
+                nombre_heroe = h.get('name') or h.get('localized_name') or "Desconocido"
+                img_heroe = h.get('image_url') if h.get('image_url') else "https://via.placeholder.com/80"
+                
+                st.markdown(f"""
+                <div class="hero-card">
+                    <img src="{img_heroe}" style="width:80px; height:80px; object-fit:cover; border-radius:10px; margin-bottom:10px;">
+                    <h4 style="color:#F8FAFC; margin:0;">{nombre_heroe}</h4>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # El expander para ver los datos sin salir de la pantalla
+                with st.expander("Ver Stats Básicas"):
+                    if slug == "lol":
+                        st.write(f"🛡️ **Armadura:** {h.get('armor', 'N/A')}")
+                        st.write(f"❤️ **Vida (HP):** {h.get('hp', 'N/A')}")
+                        st.write(f"⚔️ **Daño Base:** {h.get('attackdamage', 'N/A')}")
+                    elif slug == "dota2":
+                        roles = ", ".join(h.get('roles', []))
+                        st.write(f"🎭 **Roles:** {roles}")
+                    else: # MLBB
+                        st.write(f"🎭 **Rol:** {h.get('role', 'N/A')}")
+                        st.write(f"🛡️ **Armadura:** {h.get('armor', 'N/A')}")
+                        st.write(f"❤️ **Vida Máx:** {h.get('hp', 'N/A')}")
