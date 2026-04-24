@@ -5,9 +5,9 @@ import math
 from datetime import datetime, timedelta
 
 # ==========================================
-# 1. CONFIGURACIÓN Y LOGIN
+# 1. CONFIGURACIÓN Y LOGIN BLINDADO
 # ==========================================
-st.set_page_config(page_title="Quant Elite V14", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V15", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     if "password_correct" not in st.session_state:
@@ -22,8 +22,8 @@ def check_password():
         col1, col2, col3 = st.columns([1, 1.5, 1])
         with col2:
             st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-            st.markdown("<div class='login-title'>⚡ TERMINAL QUANT V14</div>", unsafe_allow_html=True)
-            st.markdown("<p style='color:#64748B; margin-bottom:20px;'>Motor Analítico Multi-Mercado</p>", unsafe_allow_html=True)
+            st.markdown("<div class='login-title'>⚡ TERMINAL QUANT V15</div>", unsafe_allow_html=True)
+            st.markdown("<p style='color:#64748B; margin-bottom:20px;'>Arquitectura HFT (Caché 6H)</p>", unsafe_allow_html=True)
             
             u = st.text_input("Usuario", key="login_u")
             p = st.text_input("Contraseña", type="password", key="login_p")
@@ -40,12 +40,13 @@ def check_password():
 if not check_password(): st.stop()
 
 # ==========================================
-# 2. EXTRACCIÓN DE DATOS CRUDOS (RAW DATA)
+# 2. MOTOR DE DATOS MULTI-FRECUENCIA (TU IDEA)
 # ==========================================
 API_KEY = "F163TaN2efiwM8Ejb3xj0FWaeFAWzQgjbW8bPcuQwi9-ct_ZD4g"
 
+# PETICIÓN LIGERA: Solo horarios y streams (Cada 60 segundos)
 @st.cache_data(ttl=60)
-def call_api(game_slug, endpoint, params_str=""):
+def call_api_live(game_slug, endpoint, params_str=""):
     url = f"https://api.pandascore.co/{game_slug}/{endpoint}?{params_str}"
     headers = {"accept": "application/json", "authorization": f"Bearer {API_KEY}"}
     try:
@@ -53,14 +54,24 @@ def call_api(game_slug, endpoint, params_str=""):
         return res.json() if res.status_code == 200 else []
     except: return []
 
-@st.cache_data(ttl=300)
+# PETICIÓN PESADA: Trabajo Sucio y Estadísticas (CADA 6 HORAS = 21600 segundos)
+@st.cache_data(ttl=21600)
+def call_api_history(game_slug, endpoint, params_str=""):
+    url = f"https://api.pandascore.co/{game_slug}/{endpoint}?{params_str}"
+    headers = {"accept": "application/json", "authorization": f"Bearer {API_KEY}"}
+    try:
+        res = requests.get(url, headers=headers)
+        return res.json() if res.status_code == 200 else []
+    except: return []
+
+@st.cache_data(ttl=21600) # Se guarda por 6 horas
 def get_raw_history(slug, team_id):
-    """Descarga los últimos 25 partidos, filtra los 10 terminados y devuelve TODA la data cruda."""
-    historial_raw = call_api(slug, f"teams/{team_id}/matches", "per_page=25")
+    """Descarga los últimos 25 partidos cada 6 horas y filtra los 10 reales."""
+    historial_raw = call_api_history(slug, f"teams/{team_id}/matches", "per_page=25")
     if not historial_raw: return [], 0.50, ['unknown']*5
     
     historial_limpio = [m for m in historial_raw if m.get('status') == 'finished' and m.get('winner_id')]
-    historial_limpio = historial_limpio[:10] # Nos quedamos con los 10 útiles
+    historial_limpio = historial_limpio[:10]
     
     if not historial_limpio: return [], 0.50, ['unknown']*5
     
@@ -88,62 +99,40 @@ def gestionar_bank(monto=None):
 bank_actual = gestionar_bank()
 
 # ==========================================
-# 3. MOTOR CUANTITATIVO (EL TRABAJO SUCIO)
+# 3. MOTOR CUANTITATIVO MULTI-MERCADO
 # ==========================================
 def motor_cuantitativo_avanzado(hist_t1, hist_t2, wr_t1, wr_t2, mercado, opcion, linea_casino):
-    """
-    Toma la data de las últimas 10 partidas de ambos y calcula la probabilidad EXACTA
-    según el mercado seleccionado.
-    """
-    # Si no hay data suficiente, volvemos a la media neutral
     if not hist_t1 or not hist_t2: return 0.50
-    
     prob_base = 0.50
     total_wr = wr_t1 + wr_t2
-    if total_wr == 0: total_wr = 1 # Evitar división por cero
+    if total_wr == 0: total_wr = 1 
 
-    # 1. MERCADO: GANADOR DEL PARTIDO
     if "Ganador" in mercado:
         if opcion == "Equipo A": prob_base = wr_t1 / total_wr
         else: prob_base = wr_t2 / total_wr
 
-    # 2. MERCADO: HANDICAP
     elif "Handicap" in mercado:
-        # Castigamos la probabilidad base según lo grande que sea la línea del casino
-        # Ej: Un handicap de -5.5 kills reduce la probabilidad de ganar la apuesta en un ~15%
         prob_win = wr_t1 / total_wr if opcion == "Equipo A" else wr_t2 / total_wr
-        dificultad = (abs(linea_casino) * 0.025) # 2.5% de castigo por cada punto de handicap
+        dificultad = (abs(linea_casino) * 0.025)
         prob_base = prob_win - dificultad if linea_casino < 0 else prob_win + dificultad
 
-    # 3. MERCADO: TOTAL KILLS / TOTAL TORRES / DURACIÓN (LÍNEAS OVER/UNDER)
     elif "Total" in mercado or "Duración" in mercado:
-        # Simulamos la agresividad basada en el WinRate combinado. 
-        # Equipos que ganan mucho (WR alto combinado) suelen hacer partidas más limpias y rápidas.
         momentum_combinado = (wr_t1 + wr_t2) / 2
-        
-        # Si la línea del casino es muy baja, el "Más (+)" es muy probable
-        # Aquí cruzamos la línea del casino con el momentum histórico
         if opcion == "Más (+)":
             prob_base = 0.50 + (momentum_combinado - 0.50) * 0.3
-            if linea_casino > 0 and linea_casino < 25: prob_base += 0.10 # Línea baja = Over fácil
-        else: # Menos (-)
+            if linea_casino > 0 and linea_casino < 25: prob_base += 0.10 
+        else: 
             prob_base = 0.50 - (momentum_combinado - 0.50) * 0.3
-            if linea_casino > 35: prob_base += 0.10 # Línea alta = Under fácil
+            if linea_casino > 35: prob_base += 0.10 
 
-    # 4. MERCADO: PRIMEROS OBJETIVOS (Roshan, Dragón, Lord, 1ra Sangre)
     elif "Primer" in mercado or "Ambos" in mercado:
-        # El control temprano de objetivos está altamente correlacionado con el WinRate,
-        # pero es más volátil que ganar el partido. Comprimimos la ventaja.
         prob_win = wr_t1 / total_wr if opcion == "Equipo A" else wr_t2 / total_wr
-        prob_base = 0.50 + ((prob_win - 0.50) * 0.7) # Factor de volatilidad (70% del WR real)
+        prob_base = 0.50 + ((prob_win - 0.50) * 0.7) 
 
-    # 5. MERCADO: KILLS POR EQUIPO
     elif "Kills Equipo" in mercado:
         prob_win = wr_t1 / total_wr if opcion == "Equipo A" else wr_t2 / total_wr
-        # Generalmente, el equipo que gana hace más kills.
         prob_base = prob_win
 
-    # Topamos los límites para evitar apuestas irracionales de Kelly
     return max(0.05, min(0.95, prob_base))
 
 # ==========================================
@@ -164,11 +153,11 @@ st.markdown(f"""
     .glass-card {{ background: {c_card}; border: 1px solid {c_border}; border-radius: 12px; padding: 15px; margin-bottom: 10px; }}
     .team-logo {{ width: 55px; height: 55px; object-fit: contain; margin-bottom: 5px; }}
     .team-name {{ font-size: 14px; font-weight: bold; color: {c_text}; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}}
-    .winrate-text {{ font-size: 12px; color: {c_acc}; font-weight: bold; margin-bottom: 5px; }}
+    .winrate-text {{ font-size: 12px; color: {c_acc}; font-weight: bold; margin-bottom: 5px; text-shadow: 0 0 5px rgba(0,0,0,0.5); }}
     .form-container {{ display: flex; gap: 4px; justify-content: center; margin-top: 5px; }}
     .tower-plate {{ width: 12px; height: 6px; border-radius: 2px; }}
-    .win {{ background-color: #10B981; }}
-    .loss {{ background-color: #EF4444; }}
+    .win {{ background-color: #10B981; box-shadow: 0 0 3px #10B981; }}
+    .loss {{ background-color: #EF4444; box-shadow: 0 0 3px #EF4444; }}
     .unknown {{ background-color: #475569; opacity: 0.3; }}
     .vs-text {{ font-size: 18px; font-weight: bold; color: {c_acc}; margin: 0 10px; }}
     .badge-live {{ background: #EF4444; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; animation: pulse 2s infinite;}}
@@ -177,7 +166,9 @@ st.markdown(f"""
     .prob-number {{ font-size: 28px; font-weight: bold; color: {c_acc}; }}
     .stream-btn {{ background-color: #9146FF; color: white !important; padding: 6px 12px; border-radius: 8px; text-decoration: none; font-size: 11px; font-weight: bold; display: inline-block; margin-top: 15px; border: 1px solid #772CE8; width: 100%; text-align: center; transition: 0.2s; }}
     .stream-btn:hover {{ background-color: #772CE8; }}
-    .sniper-alert {{ background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; padding: 8px; border-radius: 8px; margin-bottom: 10px; text-align: center; color: #10B981; font-weight: bold; font-size: 12px; animation: pulse 2s infinite; }}
+    
+    .sniper-alert {{ background: rgba(16, 185, 129, 0.15); border: 2px solid #10B981; padding: 10px; border-radius: 8px; margin-top: 10px; text-align: center; color: #10B981; font-weight: bold; font-size: 14px; animation: pulse 1.5s infinite; text-transform: uppercase; letter-spacing: 1px; }}
+    
     div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; }}
     div.stButton > button:hover {{ background-color: {c_acc}; color: {c_bg}; }}
     @keyframes pulse {{ 0% {{opacity: 1;}} 50% {{opacity: 0.5;}} 100% {{opacity: 1;}} }}
@@ -185,7 +176,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 5. SIDEBAR
+# 5. SIDEBAR Y JUEGOS
 # ==========================================
 st.sidebar.markdown("---")
 st.sidebar.markdown(f"<h2 style='color:{c_acc}; text-align:center;'>🏦 Mi Bankroll</h2>", unsafe_allow_html=True)
@@ -210,12 +201,13 @@ slug = juegos_config[juego_sel]["slug"]
 mercados_list = juegos_config[juego_sel]["mercados"]
 
 # ==========================================
-# 6. RADAR QUANT (SNIPER Y MOTOR 10 PARTIDAS)
+# 6. RADAR QUANT
 # ==========================================
 st.markdown(f"<h2 style='color:{c_text};'>📡 Radar Quant: {juego_sel}</h2>", unsafe_allow_html=True)
     
-running = call_api(slug, "matches/running", "per_page=10")
-upcoming = call_api(slug, "matches/upcoming", "per_page=40&sort=begin_at")
+# Usamos call_api_live (60s) para ver quién juega, no saturamos la API
+running = call_api_live(slug, "matches/running", "per_page=10")
+upcoming = call_api_live(slug, "matches/upcoming", "per_page=40&sort=begin_at")
 partidos_totales = running + upcoming
 
 hoy = datetime.now()
@@ -237,7 +229,7 @@ else:
         img1 = t1['image_url'] if t1['image_url'] else 'https://via.placeholder.com/55'
         img2 = t2['image_url'] if t2['image_url'] else 'https://via.placeholder.com/55'
         
-        # EL TRABAJO SUCIO: Traemos data cruda, winrate y forma de las últimas 10
+        # HISTORIAL PESADO (6 HORAS) - Se conecta a la nueva función
         hist_t1, wr_t1, form_t1 = get_raw_history(slug, t1['id'])
         hist_t2, wr_t2, form_t2 = get_raw_history(slug, t2['id'])
         
@@ -246,20 +238,7 @@ else:
         
         html_torres_t1 = "".join([f"<div class='tower-plate {res}'></div>" for res in form_t1])
         html_torres_t2 = "".join([f"<div class='tower-plate {res}'></div>" for res in form_t2])
-        
-        # ALERTA SNIPER BASE (75% a 99%)
-        val_wr1 = wr_t1 if hist_t1 else 0.50
-        val_wr2 = wr_t2 if hist_t2 else 0.50
-        prob_base_t1 = val_wr1 / (val_wr1 + val_wr2) if (val_wr1 + val_wr2) > 0 else 0.50
-        prob_base_t2 = val_wr2 / (val_wr1 + val_wr2) if (val_wr1 + val_wr2) > 0 else 0.50
 
-        alerta_html = ""
-        if 0.75 <= prob_base_t1 <= 0.99:
-            alerta_html = f"<div class='sniper-alert'>🎯 ALERTA SNIPER: {t1['name']} tiene ventaja crítica ({prob_base_t1*100:.1f}%)</div>"
-        elif 0.75 <= prob_base_t2 <= 0.99:
-            alerta_html = f"<div class='sniper-alert'>🎯 ALERTA SNIPER: {t2['name']} tiene ventaja crítica ({prob_base_t2*100:.1f}%)</div>"
-
-        # TIEMPO Y STREAMING
         if m['status'] == 'running':
             badge = "<span class='badge-live'>🔴 EN VIVO</span>"
         else:
@@ -293,7 +272,6 @@ else:
                 </div>
                 {boton_stream}
             </div>
-            {alerta_html}
             """, unsafe_allow_html=True)
 
             with st.expander(f"⚙️ Analítica Multi-Mercado"):
@@ -308,8 +286,8 @@ else:
                     linea = st.number_input("Línea del Casino:", value=0.0, step=0.5, key=f"l_{i}")
                 
                 with c_der:
-                    # PROCESAMIENTO MATEMÁTICO REAL
-                    prob_final = motor_cuantitativo_avanzado(hist_t1, hist_t2, val_wr1, val_wr2, sel_mer, sel_opcion, linea)
+                    # PROCESAMIENTO MATEMÁTICO REAL CON HISTORIAL DE 10 PARTIDAS
+                    prob_final = motor_cuantitativo_avanzado(hist_t1, hist_t2, wr_t1, wr_t2, sel_mer, sel_opcion, linea)
                     
                     st.markdown(f"""
                     <div class="prob-box">
@@ -320,6 +298,10 @@ else:
                     """, unsafe_allow_html=True)
 
                     cuota = st.number_input("Cuota que pagan:", value=1.00, step=0.01, key=f"c_{i}")
+
+                # --- NUEVA ALERTA SNIPER DINÁMICA (DENTRO DEL EXPANDER) ---
+                if 0.75 <= prob_final <= 0.99:
+                    st.markdown(f"<div class='sniper-alert'>🎯 SNIPER ALERT: VENTAJA CRÍTICA DETECTADA EN ESTE MERCADO</div>", unsafe_allow_html=True)
 
                 if cuota > 1.01: 
                     if cuota > (1/prob_final):
