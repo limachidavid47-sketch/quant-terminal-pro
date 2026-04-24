@@ -54,7 +54,7 @@ def gestionar_bank(monto=None):
 bank_actual = gestionar_bank()
 
 # ==========================================
-# 3. CSS CORREGIDO (MIDNIGHT BLUE)
+# 3. CSS (MIDNIGHT BLUE)
 # ==========================================
 st.markdown("""
     <style>
@@ -75,10 +75,9 @@ st.markdown("""
 st.sidebar.markdown(f"<h2 style='text-align: center; color: #10B981;'>🏦 Bankroll: {bank_actual:.2f} U</h2>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
-# Diccionario de mercados actualizados a lo que pediste
 juegos = {
-    "League of Legends": {"slug": "lol", "mercados": ["Ganador del Mapa", "Handicap de Kills", "Total Kills (Global)", "Kills Equipo A", "Kills Equipo B", "Total Dragones", "Total Torres", "1ra Sangre"]},
-    "Dota 2": {"slug": "dota2", "mercados": ["Ganador del Mapa", "Handicap de Kills", "Total Kills (Global)", "Kills Equipo A", "Kills Equipo B", "Total Torres", "Primer Roshan", "1ra Sangre"]},
+    "League of Legends": {"slug": "lol", "mercados": ["Ganador del Mapa", "Handicap de Kills", "Total Kills (Global)", "Total Dragones", "Total Torres", "1ra Sangre"]},
+    "Dota 2": {"slug": "dota2", "mercados": ["Ganador del Mapa", "Handicap de Kills", "Total Kills (Global)", "Total Torres", "Primer Roshan", "1ra Sangre"]},
     "Mobile Legends": {"slug": "mobile-legends", "mercados": ["Ganador del Mapa", "Handicap de Kills", "Total Kills", "Primer Lord", "1ra Sangre"]}
 }
 
@@ -88,7 +87,7 @@ slug = juegos[juego_sel]["slug"]
 mercados_dinamicos = juegos[juego_sel]["mercados"]
 
 # ==========================================
-# 5. RADAR (DOS COLUMNAS ESTRICTAS)
+# 5. RADAR (DOS COLUMNAS Y OPERACIONES)
 # ==========================================
 st.markdown(f"### 📡 Radar Activo: {juego_sel}")
 
@@ -99,7 +98,6 @@ partidos_hoy = [p for p in partidos_totales if p['begin_at'].startswith(hoy) or 
 if not partidos_hoy:
     st.info(f"No hay partidos activos o programados hoy para {juego_sel}.")
 else:
-    # FORZAMOS LAS 2 COLUMNAS AQUÍ
     col1, col2 = st.columns(2)
     
     for i, m in enumerate(partidos_hoy):
@@ -117,7 +115,6 @@ else:
             hora_bol = (dt_utc - timedelta(hours=4)).strftime("%H:%M")
             badge = f"<span class='badge-time'>🕒 {hora_bol}</span>"
 
-        # EL HTML SIN SANGRÍA PARA EVITAR EL BUG QUE TE SALIÓ
         tarjeta_html = f"""<div class="glass-card">
 <div style="margin-bottom: 8px; font-size: 11px; color: #94A3B8; display: flex; justify-content: space-between;">
 <span>🏆 {m['league']['name']}</span>{badge}
@@ -135,29 +132,41 @@ else:
 </div>
 </div>"""
 
-        # Alternamos entre columna 1 y columna 2
         columna_actual = col1 if i % 2 == 0 else col2
         
         with columna_actual:
             st.markdown(tarjeta_html, unsafe_allow_html=True)
             
-            # EL EXPANDER PARA ABRIR EL MERCADO DEBAJO DE LA TARJETA
             with st.expander(f"⚙️ Operar {t1['acronym'] if t1.get('acronym') else 'T1'} vs {t2['acronym'] if t2.get('acronym') else 'T2'}"):
                 sel_mer = st.selectbox("Mercado:", mercados_dinamicos, key=f"m_{i}")
                 
-                # Cajas para la Línea y la Cuota
-                c_lin, c_cuo = st.columns(2)
-                linea = c_lin.number_input("Línea (Ej: 26.5):", value=0.0, step=0.5, key=f"l_{i}")
-                cuota = c_cuo.number_input("Cuota:", value=1.85, step=0.01, key=f"c_{i}")
-                
-                prob_real = 0.55 # Base estadística
+                # --- LÓGICA INTELIGENTE DE MERCADOS ---
+                if "Total" in sel_mer or "Handicap" in sel_mer:
+                    # Si es un mercado de Líneas, mostramos 3 columnas
+                    c_lin, c_op, c_cuo = st.columns([1.2, 1.2, 1])
+                    linea = c_lin.number_input("Línea (Ej: 26.5):", value=0.0, step=0.5, key=f"l_{i}")
+                    
+                    if "Total" in sel_mer:
+                        opcion = c_op.selectbox("Opción:", ["Más (+)", "Menos (-)"], key=f"op_{i}")
+                    else: # Handicap
+                        opcion = c_op.selectbox("A favor de:", [t1['name'], t2['name']], key=f"op_{i}")
+                        
+                    cuota = c_cuo.number_input("Cuota:", value=1.85, step=0.01, key=f"c_{i}")
+                else:
+                    # Si es ganador o primera sangre, solo 2 columnas
+                    c_op, c_cuo = st.columns([2, 1])
+                    opcion = c_op.selectbox("Equipo:", [t1['name'], t2['name']], key=f"op_{i}")
+                    cuota = c_cuo.number_input("Cuota:", value=1.85, step=0.01, key=f"c_{i}")
+
+                # Cálculo de Kelly
+                prob_real = 0.55 # Aquí irá tu WinRate o modelo en el futuro
                 if cuota > (1/prob_real):
                     kelly = (((cuota - 1) * prob_real) - (1 - prob_real)) / (cuota - 1)
                     stake = (kelly * 0.25) * bank_actual
                     if stake > 0:
-                        st.success(f"✅ Valor! Apuesta: {stake:.2f} U")
+                        st.success(f"✅ Valor detectado en **{opcion}**. Apuesta: {stake:.2f} U")
                         if st.button("Aplicar", key=f"btn_{i}", use_container_width=True):
                             gestionar_bank(bank_actual - stake)
                             st.rerun()
                 else:
-                    st.warning("❌ Cuota muy baja.")
+                    st.warning("❌ Cuota sin valor matemático.")
