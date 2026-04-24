@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. CONFIGURACIÓN Y LOGIN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V5", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V6", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     if "password_correct" not in st.session_state:
@@ -24,11 +24,11 @@ def check_password():
 if not check_password(): st.stop()
 
 # ==========================================
-# 2. MOTOR DE DATOS
+# 2. MOTOR DE DATOS (ACTUALIZACIÓN CADA 60s)
 # ==========================================
 API_KEY = "F163TaN2efiwM8Ejb3xj0FWaeFAWzQgjbW8bPcuQwi9-ct_ZD4g"
 
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=60)
 def call_api(game_slug, endpoint, params_str=""):
     url = f"https://api.pandascore.co/{game_slug}/{endpoint}?{params_str}"
     headers = {"accept": "application/json", "authorization": f"Bearer {API_KEY}"}
@@ -46,11 +46,10 @@ def gestionar_bank(monto=None):
 
 bank_actual = gestionar_bank()
 
-# Inicializador de estado para la cebolla
 if 'cebolla_nivel' not in st.session_state:
-    st.session_state.cebolla_nivel = 0 # 0=Ligas, 1=Equipos, 2=Jugadores
+    st.session_state.cebolla_nivel = 0
     st.session_state.id_liga_sel = None
-    st.session_state.id_equipo_sel = None
+    st.session_state.equipo_data_sel = None
 
 # ==========================================
 # 3. DISEÑO CSS
@@ -77,8 +76,9 @@ st.markdown("""
     }
     .stream-btn:hover { background-color: #772CE8; }
     
-    .btn-cebolla { background-color: #1E293B; border: 1px solid #38BDF8; color: white; padding: 10px; border-radius: 8px; width: 100%; text-align: center; font-weight: bold; transition: 0.3s; cursor: pointer;}
-    .btn-cebolla:hover { background-color: #38BDF8; color: #0B1120; }
+    /* Botones de Streamlit Oscuros */
+    div.stButton > button { background-color: #0F172A; color: #38BDF8; border: 1px solid #334155; border-radius: 8px; font-weight: bold; }
+    div.stButton > button:hover { background-color: #38BDF8; color: #0F172A; border-color: #38BDF8; }
     
     @keyframes pulse { 0% {opacity: 1;} 50% {opacity: 0.5;} 100% {opacity: 1;} }
     </style>
@@ -101,9 +101,7 @@ mercados_list = juegos_config[juego_sel]["mercados"]
 st.sidebar.markdown("---")
 seccion = st.sidebar.selectbox("Ir a:", ["🔴 Radar En Vivo", "🏆 Base de Datos (Cebolla)", "📚 Enciclopedia de Campeones"])
 
-# Resetear la cebolla si cambias de sección
-if seccion != "🏆 Base de Datos (Cebolla)":
-    st.session_state.cebolla_nivel = 0
+if seccion != "🏆 Base de Datos (Cebolla)": st.session_state.cebolla_nivel = 0
 
 # ==========================================
 # 5. PANTALLAS
@@ -171,19 +169,15 @@ if seccion == "🔴 Radar En Vivo":
                 </div>
                 """, unsafe_allow_html=True)
 
-                # --- PANEL DE OPERACIÓN CON SELECTOR AÑADIDO ---
                 with st.expander(f"⚙️ Operar Mercados"):
                     c_izq, c_der = st.columns(2)
                     
                     with c_izq:
                         sel_mer = st.selectbox("Mercado:", mercados_list, key=f"mer_{i}")
-                        
-                        # AQUÍ LA SOLUCIÓN: Selector dinámico de equipo o Más/Menos
                         if "Total" in sel_mer or "Duración" in sel_mer:
                             sel_opcion = st.selectbox("Opción:", ["Más (+)", "Menos (-)"], key=f"op_{i}")
                         else:
                             sel_opcion = st.selectbox("A favor de:", [t1['name'], t2['name']], key=f"op_{i}")
-                            
                         linea = st.number_input("Línea Casino:", value=0.0, step=0.5, key=f"l_{i}")
                     
                     with c_der:
@@ -206,52 +200,75 @@ if seccion == "🔴 Radar En Vivo":
                     else:
                         st.warning(f"⚠️ Cuota sin valor (Mínima justa: {1/prob_base:.2f})")
 
-# --- PANTALLA: BASE DE DATOS (CEBOLLA VISUAL) ---
+# --- PANTALLA: BASE DE DATOS (CEBOLLA) ---
 elif seccion == "🏆 Base de Datos (Cebolla)":
     
-    # BOTÓN PARA VOLVER ATRÁS
     if st.session_state.cebolla_nivel > 0:
         if st.button("⬅️ Volver Atrás", use_container_width=True):
             st.session_state.cebolla_nivel -= 1
             st.rerun()
 
-    # NIVEL 0: LIGAS (Tarjetas)
+    # NIVEL 0: LIGAS
     if st.session_state.cebolla_nivel == 0:
         st.title("🌐 Selecciona una Liga")
-        ligas = call_api(slug, "leagues", "per_page=12")
+        # Traemos ligas con actividad reciente
+        ligas = call_api(slug, "leagues", "sort=-modified_at&per_page=12")
         cols = st.columns(4)
         for idx, l in enumerate(ligas):
             with cols[idx % 4]:
-                st.markdown(f"<div class='glass-card' style='text-align:center;'><img src='{l['image_url']}' style='width:60px; height:60px; object-fit:contain;'></div>", unsafe_allow_html=True)
-                if st.button(f"{l['name']}", key=f"btn_lig_{l['id']}", use_container_width=True):
+                img_url = l['image_url'] if l['image_url'] else "https://via.placeholder.com/80?text=Liga"
+                st.markdown(f"""
+                <div class='glass-card' style='text-align:center;'>
+                    <div class='team-name' style='color:#38BDF8; margin-bottom:10px;'>{l['name']}</div>
+                    <img src='{img_url}' style='width:70px; height:70px; object-fit:contain; margin-bottom:10px;'>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button("Ver Equipos Activos", key=f"l_{l['id']}", use_container_width=True):
                     st.session_state.id_liga_sel = l['id']
                     st.session_state.cebolla_nivel = 1
                     st.rerun()
 
-    # NIVEL 1: EQUIPOS (Tarjetas)
+    # NIVEL 1: EQUIPOS (Extracción Inteligente de Partidas)
     elif st.session_state.cebolla_nivel == 1:
-        st.title("🛡️ Selecciona un Equipo")
-        equipos = call_api(slug, f"leagues/{st.session_state.id_liga_sel}/teams", "per_page=16")
+        st.title("🛡️ Equipos Activos en esta Liga")
+        # Buscamos los últimos partidos de esa liga para sacar los equipos reales
+        partidos_liga = call_api(slug, "matches", f"filter[league_id]={st.session_state.id_liga_sel}&per_page=30&sort=-begin_at")
+        
+        equipos_unicos = {}
+        for p in partidos_liga:
+            for opp in p.get('opponents', []):
+                eq = opp['opponent']
+                equipos_unicos[eq['id']] = eq
+                
+        equipos = list(equipos_unicos.values())
+
         if equipos:
             cols = st.columns(4)
             for idx, e in enumerate(equipos):
                 with cols[idx % 4]:
-                    st.markdown(f"<div class='glass-card' style='text-align:center;'><img src='{e['image_url']}' style='width:60px; height:60px; object-fit:contain;'></div>", unsafe_allow_html=True)
-                    if st.button(f"{e['name']}", key=f"btn_eq_{e['id']}", use_container_width=True):
-                        st.session_state.id_equipo_sel = e
+                    img_url = e['image_url'] if e['image_url'] else "https://via.placeholder.com/60"
+                    st.markdown(f"""
+                    <div class='glass-card' style='text-align:center;'>
+                        <div class='team-name' style='color:#F8FAFC;'>{e['name']}</div>
+                        <img src='{img_url}' style='width:60px; height:60px; object-fit:contain; margin-bottom:10px;'>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if st.button("Ver Jugadores", key=f"e_{e['id']}", use_container_width=True):
+                        st.session_state.equipo_data_sel = e
                         st.session_state.cebolla_nivel = 2
                         st.rerun()
         else:
-            st.info("No hay equipos disponibles para esta liga en este momento.")
+            st.info("No se encontraron equipos compitiendo recientemente en esta liga.")
 
-    # NIVEL 2: JUGADORES Y ESTADÍSTICAS
+    # NIVEL 2: JUGADORES
     elif st.session_state.cebolla_nivel == 2:
-        equipo = st.session_state.id_equipo_sel
+        equipo = st.session_state.equipo_data_sel
         st.title(f"📊 Ficha Técnica: {equipo['name']}")
         
         c_logo, c_stats = st.columns([1, 3])
         with c_logo:
-            st.image(equipo['image_url'], width=150)
+            img_url = equipo['image_url'] if equipo['image_url'] else "https://via.placeholder.com/150"
+            st.image(img_url, width=150)
             st.markdown(f"**Acrónimo:** {equipo.get('acronym', 'N/A')}")
         
         with c_stats:
@@ -261,16 +278,16 @@ elif seccion == "🏆 Base de Datos (Cebolla)":
                 p_cols = st.columns(3)
                 for i, p in enumerate(jugadores):
                     with p_cols[i % 3]:
+                        img_p = p['image_url'] if p['image_url'] else 'https://via.placeholder.com/60'
                         st.markdown(f"""
                         <div class="glass-card" style="text-align:center; padding:10px;">
-                            <img src="{p['image_url'] if p['image_url'] else 'https://via.placeholder.com/60'}" style="width:60px; height:60px; border-radius:50%; object-fit:cover;"><br>
+                            <img src="{img_p}" style="width:60px; height:60px; border-radius:50%; object-fit:cover;"><br>
                             <b style="color:#38BDF8;">{p['name']}</b><br>
                             <span style="font-size:11px; color:#94A3B8;">{p['role'] if p['role'] else 'Pro Player'}</span><br>
-                            <span style="font-size:10px; color:#10B981;">Main: Calculando...</span>
                         </div>
                         """, unsafe_allow_html=True)
             else:
-                st.warning("El equipo no ha hecho pública su plantilla actual.")
+                st.warning("Plantilla no disponible para este equipo.")
 
 # --- PANTALLA: ENCICLOPEDIA ---
 elif seccion == "📚 Enciclopedia de Campeones":
