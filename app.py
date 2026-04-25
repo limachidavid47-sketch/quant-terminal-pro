@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y ACCESO QUANT
 # ==========================================
-st.set_page_config(page_title="Quant Elite V22", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V23", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     if "password_correct" not in st.session_state:
@@ -22,7 +22,7 @@ def check_password():
         col1, col2, col3 = st.columns([1, 1.5, 1])
         with col2:
             st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-            st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V22</div>", unsafe_allow_html=True)
+            st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V23</div>", unsafe_allow_html=True)
             st.markdown("<p style='color:#64748B; margin-bottom:25px;'>SISTEMA MULTI-DISCIPLINA HFT</p>", unsafe_allow_html=True)
             u = st.text_input("Usuario", key="login_u")
             p = st.text_input("Contraseña", type="password", key="login_p")
@@ -89,7 +89,6 @@ def calculate_gold_impact(gold_diff, minute, game_slug):
     time_decay = 1 / (1 + (minute / min_pivote)**2)
     return max(-0.40, min(0.40, impacto_bruto * time_decay))
 
-# AHORA ACEPTA EL NOMBRE DEL EQUIPO 1 PARA COMPARAR DINÁMICAMENTE
 def motor_cuantitativo_avanzado(wr_t1, wr_t2, mercado, opcion, linea_casino, t1_name):
     wr1, wr2 = (wr_t1 or 0.50), (wr_t2 or 0.50)
     prob_base = 0.50
@@ -98,7 +97,8 @@ def motor_cuantitativo_avanzado(wr_t1, wr_t2, mercado, opcion, linea_casino, t1_
 
     es_equipo_1 = (opcion == t1_name)
 
-    if "Ganador" in mercado:
+    if "Ganador" in mercado or "Kills por Equipo" in mercado:
+        # Si un equipo gana, es estadísticamente casi seguro que hace más kills
         prob_base = wr1 / total_wr if es_equipo_1 else wr2 / total_wr
 
     elif "Handicap" in mercado:
@@ -182,11 +182,11 @@ if st.sidebar.button("🗑️ Limpiar Caché (Forzar Datos)", use_container_widt
 
 st.sidebar.markdown("---")
 
-# MERCADOS LIMPIOS Y AUDITADOS
+# KILLS POR EQUIPO AÑADIDO DE VUELTA A TODAS LAS DISCIPLINAS
 juegos_config = {
-    "League of Legends": {"slug": "lol", "mercados": ["Ganador del Partido", "Handicap", "Primer Dragón", "Total Kills", "Duración de Partida"]},
-    "Dota 2": {"slug": "dota2", "mercados": ["Ganador del Partido", "Handicap", "Primer Roshan", "Total Torres", "Total Kills", "Duración de Partida"]},
-    "Mobile Legends": {"slug": "mobile-legends", "mercados": ["Ganador del Partido", "Handicap", "Primer Lord", "Total Kills", "Duración de Partida"]}
+    "League of Legends": {"slug": "lol", "mercados": ["Ganador del Partido", "Handicap", "Primer Dragón", "Total Kills", "Kills por Equipo", "Duración de Partida"]},
+    "Dota 2": {"slug": "dota2", "mercados": ["Ganador del Partido", "Handicap", "Primer Roshan", "Total Torres", "Total Kills", "Kills por Equipo", "Duración de Partida"]},
+    "Mobile Legends": {"slug": "mobile-legends", "mercados": ["Ganador del Partido", "Handicap", "Primer Lord", "Total Kills", "Kills por Equipo", "Duración de Partida"]}
 }
 
 st.sidebar.markdown(f"<h3 style='color:{c_text};'>🎮 Disciplina</h3>", unsafe_allow_html=True)
@@ -271,7 +271,7 @@ else:
                 
                 c_izq, c_der = st.columns(2)
                 with c_izq:
-                    # AQUÍ ESTÁ LA MAGIA DE LOS NOMBRES DINÁMICOS
+                    # LÓGICA DINÁMICA DE OPCIONES
                     if "Total" in sel_mer or "Duración" in sel_mer:
                         sel_opcion = st.selectbox("Opción:", ["Más (+)", "Menos (-)"], key=f"op_{i}")
                     else:
@@ -293,7 +293,6 @@ else:
                     
                     ajuste_oro = calculate_gold_impact(diff_oro, min_actual, slug)
 
-                # PASAMOS EL NOMBRE DEL EQUIPO 1 AL MOTOR
                 prob_base = motor_cuantitativo_avanzado(wr_t1, wr_t2, sel_mer, sel_opcion, linea, t1['name'])
                 prob_final = max(0.05, min(0.95, prob_base + ajuste_oro))
 
