@@ -7,46 +7,59 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD, ACCESO QUANT Y ENLACE MÁGICO
 # ==========================================
-st.set_page_config(page_title="Quant Elite V27", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V28", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
+    # LECTOR DE TOKEN UNIVERSAL BLINDADO
     token = ""
     try:
-        if "token" in st.query_params: token = st.query_params["token"]
+        token = st.query_params.get("token", "")
     except:
-        params = st.experimental_get_query_params()
-        if "token" in params: token = params["token"][0]
+        try:
+            params = st.experimental_get_query_params()
+            token = params.get("token", [""])[0]
+        except: pass
         
-    if token == "capo": st.session_state["password_correct"] = True
-    if st.session_state.get("password_correct", False): return True
+    if token == "capo": 
+        st.session_state["password_correct"] = True
+        
+    if st.session_state.get("password_correct", False): 
+        return True
 
+    # DISEÑO DE LOGIN
     st.markdown("""
     <style>
     .stApp { background-color: #05080F; color: #F8FAFC; }
-    .login-box { background: #0F172A; border: 2px solid #10B981; border-radius: 20px; padding: 40px; text-align: center; margin-top: 10vh; box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); }
-    .login-title { color: #10B981; font-size: 30px; font-weight: 900; letter-spacing: 3px; }
+    .login-box { background: #0F172A; border: 2px solid #10B981; border-radius: 20px; padding: 30px; margin-top: 5vh; box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); }
+    .login-title { color: #10B981; font-size: 26px; font-weight: 900; letter-spacing: 2px; text-align: center; }
     </style>
     """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V27</div>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#64748B; margin-bottom:25px;'>OMNI-SISTEMA HFT (MOBAs + FPS)</p>", unsafe_allow_html=True)
-        u = st.text_input("Usuario", key="login_u")
-        p = st.text_input("Contraseña", type="password", key="login_p")
-        if st.button("AUTENTICAR", use_container_width=True):
-            if u == st.secrets["usuario"] and p == st.secrets["password"]:
-                st.session_state["password_correct"] = True
-                st.rerun()
-            else: st.error("ACCESO DENEGADO")
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V28</div>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>OMNI-SISTEMA HFT (MOBAs + FPS)</p>", unsafe_allow_html=True)
+        
+        # FIX MÓVIL: FORMULARIO NATIVO PARA IPHONE
+        with st.form("login_form", clear_on_submit=False):
+            u = st.text_input("Operador")
+            p = st.text_input("Clave de Acceso", type="password")
+            submit_btn = st.form_submit_button("AUTENTICAR SISTEMA", use_container_width=True)
+            
+            if submit_btn:
+                if u == st.secrets.get("usuario", "") and p == st.secrets.get("password", ""):
+                    st.session_state["password_correct"] = True
+                    st.rerun()
+                else: 
+                    st.error("❌ Acceso Denegado. Credenciales inválidas.")
         st.markdown("</div>", unsafe_allow_html=True)
     return False
 
 if not check_password(): st.stop()
 
 # ==========================================
-# 2. MOTOR DE DATOS HFT (6 HORAS CACHÉ - 10 PARTIDOS)
+# 2. MOTOR DE DATOS HFT (6 HORAS CACHÉ)
 # ==========================================
 API_KEY = "F163TaN2efiwM8Ejb3xj0FWaeFAWzQgjbW8bPcuQwi9-ct_ZD4g"
 
@@ -87,7 +100,6 @@ bank_actual = gestionar_bank()
 # ==========================================
 # 3. MOTORES CUANTITATIVOS (MOBA & FPS)
 # ==========================================
-# MOTOR 1: ECONOMÍA MOBA
 def calculate_gold_impact(gold_diff, minute, game_slug):
     if minute <= 0: return 0
     if game_slug == "dota2": divisor, pivote = 10000, 30
@@ -101,7 +113,7 @@ def motor_moba(wr1, wr2, mercado, opcion, linea_casino, t1_name):
     total_wr = wr1 + wr2 if (wr1 + wr2) > 0 else 1
     es_eq1 = (opcion == t1_name)
 
-    if "Ganador" in mercado or "Kills por" in mercado and "Carrera" not in mercado:
+    if "Ganador" in mercado or ("Kills por" in mercado and "Carrera" not in mercado):
         prob_base = wr1 / total_wr if es_eq1 else wr2 / total_wr
     elif "Handicap" in mercado:
         prob_win = wr1 / total_wr if es_eq1 else wr2 / total_wr
@@ -118,19 +130,17 @@ def motor_moba(wr1, wr2, mercado, opcion, linea_casino, t1_name):
         prob_base = 0.50 + (((wr1 / total_wr if es_eq1 else wr2 / total_wr) - 0.50) * var)
     return max(0.05, min(0.95, prob_base))
 
-# MOTOR 2: TÁCTICA FPS (INFERENCIA BAYESIANA SIMPLIFICADA)
 def motor_fps(wr1, wr2, mercado, opcion, linea, t1_name, f_blood, eco_adv):
     total_wr = wr1 + wr2 if (wr1 + wr2) > 0 else 1
     es_eq1 = (opcion == t1_name)
     prob_base = wr1 / total_wr if es_eq1 else wr2 / total_wr
 
     if "Handicap" in mercado:
-        dificultad = (abs(linea) * 0.04) # En FPS, cada ronda vale más estadísticamente
+        dificultad = (abs(linea) * 0.04) 
         prob_base = prob_base - dificultad if linea < 0 else prob_base + dificultad
     elif "Total" in mercado:
         prob_base = 0.5 + ((wr1 + wr2) / 2 - 0.5) * 0.4 if "Más" in opcion else 0.5 - ((wr1 + wr2) / 2 - 0.5) * 0.4
 
-    # Simulación Bayesiana In-Play
     if f_blood == "A favor": prob_base += 0.18
     elif f_blood == "En contra": prob_base -= 0.18
 
@@ -167,14 +177,16 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 5. SIDEBAR: EL INTERRUPTOR MAESTRO
+# 5. SIDEBAR Y SISTEMA MAESTRO
 # ==========================================
 st.sidebar.markdown("---")
 token_activo = False
 try:
     if "token" in st.query_params and st.query_params["token"] == "capo": token_activo = True
 except: pass
-if token_activo: st.sidebar.markdown("<div style='background-color:#10B981; color:white; padding:5px; border-radius:5px; text-align:center; font-weight:bold; font-size:12px; margin-bottom:10px;'>🔓 MODO CAPO ACTIVO</div>", unsafe_allow_html=True)
+
+if token_activo: 
+    st.sidebar.markdown("<div style='background-color:#10B981; color:white; padding:5px; border-radius:5px; text-align:center; font-weight:bold; font-size:12px; margin-bottom:10px;'>🔓 MODO CAPO ACTIVO</div>", unsafe_allow_html=True)
 
 st.sidebar.markdown(f"<h2 style='color:{c_acc}; text-align:center;'>🏦 Mi Bankroll</h2>", unsafe_allow_html=True)
 nuevo_bank = st.sidebar.number_input("Ajustar Saldo (U):", value=float(bank_actual), step=10.0)
@@ -183,7 +195,6 @@ st.sidebar.markdown(f"<h1 style='text-align:center; color:{c_text};'>{bank_actua
 
 st.sidebar.markdown("---")
 
-# EL SWITCH PRINCIPAL
 categoria = st.sidebar.radio("🌐 TIPO DE OPERACIÓN", ["⚔️ MOBAs (Estrategia)", "🔫 Shooters (Tácticos)"])
 st.sidebar.markdown("---")
 
@@ -260,7 +271,6 @@ else:
                         st.write("")
                         prob_final = 0.50
                         
-                        # RUTA MOBA
                         if categoria == "⚔️ MOBAs (Estrategia)":
                             remontada = st.checkbox("💸 Modelo Oro", key=f"rem_{i}")
                             ajuste_oro = 0
@@ -272,7 +282,6 @@ else:
                             prob_base = motor_moba(wr1, wr2, sel_mer, sel_opcion, linea, t1['name'])
                             prob_final = max(0.05, min(0.95, prob_base + ajuste_oro))
                         
-                        # RUTA FPS SHOOTERS
                         else:
                             st.markdown("<p style='font-size:11px; color:#10B981;'>Simulador Bayesiano In-Play</p>", unsafe_allow_html=True)
                             f_blood = st.selectbox("Primera Sangre (Ronda):", ["Neutral", "A favor", "En contra"], key=f"fb_{i}")
