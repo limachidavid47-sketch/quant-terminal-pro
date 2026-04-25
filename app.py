@@ -345,4 +345,24 @@ else:
                     if 0.75 <= prob_final <= 0.99:
                         st.markdown(f"""
                         <div class='sniper-alert'>
-                            🎯 ¡SN
+                            🎯 ¡SNIPER ALERT!<br>
+                            <span style='font-size:12px; color:{c_sub};'>El algoritmo detecta un <b>{prob_final*100:.1f}%</b> de éxito en este mercado. Ejecute operación si la cuota es favorable.</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    st.markdown("---")
+                    cuota = st.number_input("Introduce la Cuota del Casino:", value=1.00, step=0.01, key=f"c_{i}")
+
+                    if cuota > 1.01: 
+                        if cuota > (1/prob_final):
+                            kelly = (((cuota - 1) * prob_final) - (1 - prob_final)) / (cuota - 1)
+                            stake = (kelly * 0.25) * bank_actual
+                            if stake > 0:
+                                st.success(f"🔥 BINGO. Apuesta Sugerida: {stake:.2f} U")
+                                if st.button("Registrar Operación", key=f"btn_{i}", use_container_width=True):
+                                    gestionar_bank(bank_actual - stake)
+                                    st.rerun()
+                        else:
+                            st.warning(f"❌ Cuota basura. El algoritmo exige {1/prob_final:.2f}+")
+                    
+                    # El "colchón invisible" se asegura vía CSS arriba
