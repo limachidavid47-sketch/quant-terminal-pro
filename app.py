@@ -7,10 +7,9 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD, ACCESO QUANT Y ENLACE MÁGICO
 # ==========================================
-st.set_page_config(page_title="Quant Elite V28", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V29", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
-    # LECTOR DE TOKEN UNIVERSAL BLINDADO
     token = ""
     try:
         token = st.query_params.get("token", "")
@@ -26,7 +25,6 @@ def check_password():
     if st.session_state.get("password_correct", False): 
         return True
 
-    # DISEÑO DE LOGIN
     st.markdown("""
     <style>
     .stApp { background-color: #05080F; color: #F8FAFC; }
@@ -38,10 +36,9 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V28</div>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V29</div>", unsafe_allow_html=True)
         st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>OMNI-SISTEMA HFT (MOBAs + FPS)</p>", unsafe_allow_html=True)
         
-        # FIX MÓVIL: FORMULARIO NATIVO PARA IPHONE
         with st.form("login_form", clear_on_submit=False):
             u = st.text_input("Operador")
             p = st.text_input("Clave de Acceso", type="password")
@@ -150,11 +147,17 @@ def motor_fps(wr1, wr2, mercado, opcion, linea, t1_name, f_blood, eco_adv):
     return max(0.05, min(0.95, prob_base))
 
 # ==========================================
-# 4. TEMAS Y CSS
+# 4. TEMAS Y CSS (ERROR CORREGIDO)
 # ==========================================
 st.sidebar.markdown("### 🎨 Apariencia")
 tema = st.sidebar.selectbox("", ["Azul Oscuro (Defecto)", "Verde Hacker", "Rojo Táctico"])
-colors = {"Azul Oscuro": ("#0B1120", "#1E293B", "#F1F5F9", "#38BDF8"), "Verde Hacker": ("#000000", "#051A05", "#4ADE80", "#10B981"), "Rojo Táctico": ("#0A0000", "#1A0505", "#FECACA", "#EF4444")}
+
+# FIX: Las llaves del diccionario ahora coinciden exactamente con las opciones del selectbox
+colors = {
+    "Azul Oscuro (Defecto)": ("#0B1120", "#1E293B", "#F1F5F9", "#38BDF8"), 
+    "Verde Hacker": ("#000000", "#051A05", "#4ADE80", "#10B981"), 
+    "Rojo Táctico": ("#0A0000", "#1A0505", "#FECACA", "#EF4444")
+}
 c_bg, c_card, c_text, c_acc = colors[tema]
 c_sub, c_border, c_btn = "#94A3B8", "#334155", "#0F172A"
 
