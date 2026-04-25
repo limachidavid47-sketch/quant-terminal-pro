@@ -5,11 +5,16 @@ import math
 from datetime import datetime, timedelta
 
 # ==========================================
-# 1. SEGURIDAD Y ACCESO QUANT
+# 1. SEGURIDAD, ACCESO QUANT Y ENLACE MÁGICO
 # ==========================================
-st.set_page_config(page_title="Quant Elite V23", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V24", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
+    # EL ENLACE MÁGICO: Si la URL tiene ?token=capo, entra directo.
+    if "token" in st.query_params and st.query_params["token"] == "capo":
+        st.session_state["password_correct"] = True
+        return True
+
     if "password_correct" not in st.session_state:
         st.markdown("""
         <style>
@@ -22,7 +27,7 @@ def check_password():
         col1, col2, col3 = st.columns([1, 1.5, 1])
         with col2:
             st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-            st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V23</div>", unsafe_allow_html=True)
+            st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V24</div>", unsafe_allow_html=True)
             st.markdown("<p style='color:#64748B; margin-bottom:25px;'>SISTEMA MULTI-DISCIPLINA HFT</p>", unsafe_allow_html=True)
             u = st.text_input("Usuario", key="login_u")
             p = st.text_input("Contraseña", type="password", key="login_p")
@@ -77,7 +82,7 @@ def gestionar_bank(monto=None):
 bank_actual = gestionar_bank()
 
 # ==========================================
-# 3. MOTOR CUANTITATIVO Y SIMULADOR DE ORO
+# 3. MOTOR CUANTITATIVO
 # ==========================================
 def calculate_gold_impact(gold_diff, minute, game_slug):
     if minute <= 0: return 0
@@ -98,7 +103,6 @@ def motor_cuantitativo_avanzado(wr_t1, wr_t2, mercado, opcion, linea_casino, t1_
     es_equipo_1 = (opcion == t1_name)
 
     if "Ganador" in mercado or "Kills por Equipo" in mercado:
-        # Si un equipo gana, es estadísticamente casi seguro que hace más kills
         prob_base = wr1 / total_wr if es_equipo_1 else wr2 / total_wr
 
     elif "Handicap" in mercado:
@@ -115,7 +119,8 @@ def motor_cuantitativo_avanzado(wr_t1, wr_t2, mercado, opcion, linea_casino, t1_
             prob_base = 0.50 - (momentum_combinado - 0.50) * 0.3
             if linea_casino > 35: prob_base += 0.10 
 
-    elif "Primer" in mercado:
+    # Agrupamos los objetivos tempranos bajo la misma lógica
+    elif "Primer" in mercado or "Primera" in mercado:
         prob_win = wr1 / total_wr if es_equipo_1 else wr2 / total_wr
         prob_base = 0.50 + ((prob_win - 0.50) * 0.7) 
 
@@ -152,9 +157,7 @@ st.markdown(f"""
     .prob-number {{ font-size: 32px; font-weight: 900; color: {c_acc}; }}
     .stream-btn {{ background-color: #9146FF; color: white !important; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; display: block; margin-top: 15px; text-align: center; transition: 0.2s; }}
     .stream-btn:hover {{ background-color: #772CE8; transform: scale(1.02); }}
-    
     .sniper-alert {{ background: rgba(16, 185, 129, 0.15); border: 2px dashed #10B981; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: center; color: #10B981; font-weight: bold; font-size: 16px; animation: pulse 1.5s infinite; text-transform: uppercase; letter-spacing: 1px; }}
-    
     div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; border-radius: 8px; padding: 10px; }}
     div.stButton > button:hover {{ background-color: {c_acc}; color: {c_bg}; border-color: {c_acc}; }}
     @keyframes pulse {{ 0% {{opacity: 1;}} 50% {{opacity: 0.6;}} 100% {{opacity: 1;}} }}
@@ -182,11 +185,20 @@ if st.sidebar.button("🗑️ Limpiar Caché (Forzar Datos)", use_container_widt
 
 st.sidebar.markdown("---")
 
-# KILLS POR EQUIPO AÑADIDO DE VUELTA A TODAS LAS DISCIPLINAS
+# LOS NUEVOS MERCADOS EXCLUSIVOS ORGANIZADOS CON OPCIÓN VACÍA
 juegos_config = {
-    "League of Legends": {"slug": "lol", "mercados": ["Ganador del Partido", "Handicap", "Primer Dragón", "Total Kills", "Kills por Equipo", "Duración de Partida"]},
-    "Dota 2": {"slug": "dota2", "mercados": ["Ganador del Partido", "Handicap", "Primer Roshan", "Total Torres", "Total Kills", "Kills por Equipo", "Duración de Partida"]},
-    "Mobile Legends": {"slug": "mobile-legends", "mercados": ["Ganador del Partido", "Handicap", "Primer Lord", "Total Kills", "Kills por Equipo", "Duración de Partida"]}
+    "League of Legends": {
+        "slug": "lol", 
+        "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap", "Primera Sangre", "Primer Dragón", "Total Dragones", "Total Barones", "Total Torres", "Total Kills", "Kills por Equipo", "Duración de Partida"]
+    },
+    "Dota 2": {
+        "slug": "dota2", 
+        "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap", "Primer Roshan", "Total Torres", "Total Kills", "Kills por Equipo", "Duración de Partida"]
+    },
+    "Mobile Legends": {
+        "slug": "mobile-legends", 
+        "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap", "Primer Lord", "Total Kills", "Kills por Equipo", "Duración de Partida"]
+    }
 }
 
 st.sidebar.markdown(f"<h3 style='color:{c_text};'>🎮 Disciplina</h3>", unsafe_allow_html=True)
@@ -269,60 +281,61 @@ else:
             with st.expander(f"⚙️ Analítica Multi-Mercado"):
                 sel_mer = st.selectbox("Mercado a Evaluar:", mercados_list, key=f"mer_{i}")
                 
-                c_izq, c_der = st.columns(2)
-                with c_izq:
-                    # LÓGICA DINÁMICA DE OPCIONES
-                    if "Total" in sel_mer or "Duración" in sel_mer:
-                        sel_opcion = st.selectbox("Opción:", ["Más (+)", "Menos (-)"], key=f"op_{i}")
-                    else:
-                        sel_opcion = st.selectbox("A favor de:", [t1['name'], t2['name']], key=f"op_{i}")
-                        
-                    linea = st.number_input("Línea del Casino:", value=0.0, step=0.5, key=f"l_{i}")
-                
-                with c_der:
-                    st.write("")
-                    remontada = st.checkbox("💸 Simular Ventaja Oro", key=f"rem_{i}")
-
-                ajuste_oro = 0
-                if remontada:
-                    st.markdown(f"<div style='border-top:1px solid {c_border}; margin:10px 0;'></div>", unsafe_allow_html=True)
-                    st.markdown(f"<p style='color:{c_text}; font-size:12px;'>Inserte la ventaja actual del equipo seleccionado ({sel_opcion}):</p>", unsafe_allow_html=True)
-                    c_min, c_oro = st.columns(2)
-                    min_actual = c_min.number_input("Minuto:", min_value=1, max_value=60, value=15, key=f"min_{i}")
-                    diff_oro = c_oro.number_input("Dif. Oro (Ej: -2500):", value=0, step=500, key=f"oro_{i}")
+                # BUGFIX: La interfaz de abajo solo se despliega SI eliges un mercado válido
+                if sel_mer != "-- Seleccione un Mercado --":
+                    c_izq, c_der = st.columns(2)
+                    with c_izq:
+                        if "Total" in sel_mer or "Duración" in sel_mer:
+                            sel_opcion = st.selectbox("Opción:", ["Más (+)", "Menos (-)"], key=f"op_{i}")
+                        else:
+                            sel_opcion = st.selectbox("A favor de:", [t1['name'], t2['name']], key=f"op_{i}")
+                            
+                        linea = st.number_input("Línea del Casino:", value=0.0, step=0.5, key=f"l_{i}")
                     
-                    ajuste_oro = calculate_gold_impact(diff_oro, min_actual, slug)
+                    with c_der:
+                        st.write("")
+                        remontada = st.checkbox("💸 Simular Ventaja Oro", key=f"rem_{i}")
 
-                prob_base = motor_cuantitativo_avanzado(wr_t1, wr_t2, sel_mer, sel_opcion, linea, t1['name'])
-                prob_final = max(0.05, min(0.95, prob_base + ajuste_oro))
+                    ajuste_oro = 0
+                    if remontada:
+                        st.markdown(f"<div style='border-top:1px solid {c_border}; margin:10px 0;'></div>", unsafe_allow_html=True)
+                        st.markdown(f"<p style='color:{c_text}; font-size:12px;'>Inserte la ventaja actual del equipo seleccionado ({sel_opcion}):</p>", unsafe_allow_html=True)
+                        c_min, c_oro = st.columns(2)
+                        min_actual = c_min.number_input("Minuto:", min_value=1, max_value=60, value=15, key=f"min_{i}")
+                        diff_oro = c_oro.number_input("Dif. Oro (Ej: -2500):", value=0, step=500, key=f"oro_{i}")
+                        
+                        ajuste_oro = calculate_gold_impact(diff_oro, min_actual, slug)
 
-                st.markdown(f"""
-                <div class="prob-box">
-                    <div style="font-size:10px; color:{c_text}; text-transform:uppercase;">Probabilidad Algoritmo</div>
-                    <div class="prob-number">{prob_final*100:.1f}%</div>
-                    <div style="font-size:10px; color:{c_sub};">Cuota Mínima Sugerida: {1/prob_final:.2f}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                    prob_base = motor_cuantitativo_avanzado(wr_t1, wr_t2, sel_mer, sel_opcion, linea, t1['name'])
+                    prob_final = max(0.05, min(0.95, prob_base + ajuste_oro))
 
-                if 0.75 <= prob_final <= 0.99:
                     st.markdown(f"""
-                    <div class='sniper-alert'>
-                        🎯 ¡SNIPER ALERT!<br>
-                        <span style='font-size:12px; color:{c_sub};'>El algoritmo detecta un <b>{prob_final*100:.1f}%</b> de éxito en este mercado. Ejecute operación si la cuota es favorable.</span>
+                    <div class="prob-box">
+                        <div style="font-size:10px; color:{c_text}; text-transform:uppercase;">Probabilidad Algoritmo</div>
+                        <div class="prob-number">{prob_final*100:.1f}%</div>
+                        <div style="font-size:10px; color:{c_sub};">Cuota Mínima Sugerida: {1/prob_final:.2f}</div>
                     </div>
                     """, unsafe_allow_html=True)
 
-                st.markdown("---")
-                cuota = st.number_input("Introduce la Cuota del Casino:", value=1.00, step=0.01, key=f"c_{i}")
+                    if 0.75 <= prob_final <= 0.99:
+                        st.markdown(f"""
+                        <div class='sniper-alert'>
+                            🎯 ¡SNIPER ALERT!<br>
+                            <span style='font-size:12px; color:{c_sub};'>El algoritmo detecta un <b>{prob_final*100:.1f}%</b> de éxito en este mercado. Ejecute operación si la cuota es favorable.</span>
+                        </div>
+                        """, unsafe_allow_html=True)
 
-                if cuota > 1.01: 
-                    if cuota > (1/prob_final):
-                        kelly = (((cuota - 1) * prob_final) - (1 - prob_final)) / (cuota - 1)
-                        stake = (kelly * 0.25) * bank_actual
-                        if stake > 0:
-                            st.success(f"🔥 BINGO. Apuesta Sugerida: {stake:.2f} U")
-                            if st.button("Registrar Operación", key=f"btn_{i}", use_container_width=True):
-                                gestionar_bank(bank_actual - stake)
-                                st.rerun()
-                    else:
-                        st.warning(f"❌ Cuota basura. El algoritmo exige {1/prob_final:.2f}+")
+                    st.markdown("---")
+                    cuota = st.number_input("Introduce la Cuota del Casino:", value=1.00, step=0.01, key=f"c_{i}")
+
+                    if cuota > 1.01: 
+                        if cuota > (1/prob_final):
+                            kelly = (((cuota - 1) * prob_final) - (1 - prob_final)) / (cuota - 1)
+                            stake = (kelly * 0.25) * bank_actual
+                            if stake > 0:
+                                st.success(f"🔥 BINGO. Apuesta Sugerida: {stake:.2f} U")
+                                if st.button("Registrar Operación", key=f"btn_{i}", use_container_width=True):
+                                    gestionar_bank(bank_actual - stake)
+                                    st.rerun()
+                        else:
+                            st.warning(f"❌ Cuota basura. El algoritmo exige {1/prob_final:.2f}+")
