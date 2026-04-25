@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y ACCESO QUANT
 # ==========================================
-st.set_page_config(page_title="Quant Elite V21", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V22", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     if "password_correct" not in st.session_state:
@@ -22,7 +22,7 @@ def check_password():
         col1, col2, col3 = st.columns([1, 1.5, 1])
         with col2:
             st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-            st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V21</div>", unsafe_allow_html=True)
+            st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V22</div>", unsafe_allow_html=True)
             st.markdown("<p style='color:#64748B; margin-bottom:25px;'>SISTEMA MULTI-DISCIPLINA HFT</p>", unsafe_allow_html=True)
             u = st.text_input("Usuario", key="login_u")
             p = st.text_input("Contraseña", type="password", key="login_p")
@@ -81,29 +81,28 @@ bank_actual = gestionar_bank()
 # ==========================================
 def calculate_gold_impact(gold_diff, minute, game_slug):
     if minute <= 0: return 0
-    # Aquí está la magia: Detecta el juego y calibra la economía
-    if game_slug == "dota2":
-        divisor_oro, min_pivote = 10000, 30
-    elif game_slug == "mobile-legends":
-        divisor_oro, min_pivote = 5000, 12
-    else: # League of Legends
-        divisor_oro, min_pivote = 8000, 25
+    if game_slug == "dota2": divisor_oro, min_pivote = 10000, 30
+    elif game_slug == "mobile-legends": divisor_oro, min_pivote = 5000, 12
+    else: divisor_oro, min_pivote = 8000, 25
 
     impacto_bruto = gold_diff / divisor_oro
     time_decay = 1 / (1 + (minute / min_pivote)**2)
     return max(-0.40, min(0.40, impacto_bruto * time_decay))
 
-def motor_cuantitativo_avanzado(hist_t1, hist_t2, wr_t1, wr_t2, mercado, opcion, linea_casino):
+# AHORA ACEPTA EL NOMBRE DEL EQUIPO 1 PARA COMPARAR DINÁMICAMENTE
+def motor_cuantitativo_avanzado(wr_t1, wr_t2, mercado, opcion, linea_casino, t1_name):
     wr1, wr2 = (wr_t1 or 0.50), (wr_t2 or 0.50)
     prob_base = 0.50
     total_wr = wr1 + wr2
     if total_wr == 0: total_wr = 1 
 
+    es_equipo_1 = (opcion == t1_name)
+
     if "Ganador" in mercado:
-        prob_base = wr1 / total_wr if opcion == "Equipo A" else wr2 / total_wr
+        prob_base = wr1 / total_wr if es_equipo_1 else wr2 / total_wr
 
     elif "Handicap" in mercado:
-        prob_win = wr1 / total_wr if opcion == "Equipo A" else wr2 / total_wr
+        prob_win = wr1 / total_wr if es_equipo_1 else wr2 / total_wr
         dificultad = (abs(linea_casino) * 0.025)
         prob_base = prob_win - dificultad if linea_casino < 0 else prob_win + dificultad
 
@@ -116,12 +115,9 @@ def motor_cuantitativo_avanzado(hist_t1, hist_t2, wr_t1, wr_t2, mercado, opcion,
             prob_base = 0.50 - (momentum_combinado - 0.50) * 0.3
             if linea_casino > 35: prob_base += 0.10 
 
-    elif "Primer" in mercado or "Ambos" in mercado:
-        prob_win = wr1 / total_wr if opcion == "Equipo A" else wr2 / total_wr
+    elif "Primer" in mercado:
+        prob_win = wr1 / total_wr if es_equipo_1 else wr2 / total_wr
         prob_base = 0.50 + ((prob_win - 0.50) * 0.7) 
-
-    elif "Kills Equipo" in mercado:
-        prob_base = wr1 / total_wr if opcion == "Equipo A" else wr2 / total_wr
 
     return max(0.05, min(0.95, prob_base))
 
@@ -166,7 +162,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 5. SIDEBAR Y SISTEMA (LAS 3 DISCIPLINAS)
+# 5. SIDEBAR Y SISTEMA 
 # ==========================================
 st.sidebar.markdown("---")
 st.sidebar.markdown(f"<h2 style='color:{c_acc}; text-align:center;'>🏦 Mi Bankroll</h2>", unsafe_allow_html=True)
@@ -185,10 +181,12 @@ if st.sidebar.button("🗑️ Limpiar Caché (Forzar Datos)", use_container_widt
     st.sidebar.success("✅ Caché limpio con éxito.")
 
 st.sidebar.markdown("---")
+
+# MERCADOS LIMPIOS Y AUDITADOS
 juegos_config = {
-    "League of Legends": {"slug": "lol", "mercados": ["Ganador del Partido", "Handicap de Kills", "Total Dragones", "Primer Dragón", "Kills Equipo A", "Kills Equipo B", "Duración de Partida"]},
-    "Dota 2": {"slug": "dota2", "mercados": ["Ganador del Partido", "Handicap de Kills", "Primer Roshan", "Total Torres", "Kills Equipo A", "Kills Equipo B", "Duración de Partida"]},
-    "Mobile Legends": {"slug": "mobile-legends", "mercados": ["Ganador del Partido", "Handicap de Kills", "Total Kills", "Primer Lord", "Duración de Partida"]}
+    "League of Legends": {"slug": "lol", "mercados": ["Ganador del Partido", "Handicap", "Primer Dragón", "Total Kills", "Duración de Partida"]},
+    "Dota 2": {"slug": "dota2", "mercados": ["Ganador del Partido", "Handicap", "Primer Roshan", "Total Torres", "Total Kills", "Duración de Partida"]},
+    "Mobile Legends": {"slug": "mobile-legends", "mercados": ["Ganador del Partido", "Handicap", "Primer Lord", "Total Kills", "Duración de Partida"]}
 }
 
 st.sidebar.markdown(f"<h3 style='color:{c_text};'>🎮 Disciplina</h3>", unsafe_allow_html=True)
@@ -273,10 +271,12 @@ else:
                 
                 c_izq, c_der = st.columns(2)
                 with c_izq:
+                    # AQUÍ ESTÁ LA MAGIA DE LOS NOMBRES DINÁMICOS
                     if "Total" in sel_mer or "Duración" in sel_mer:
                         sel_opcion = st.selectbox("Opción:", ["Más (+)", "Menos (-)"], key=f"op_{i}")
                     else:
-                        sel_opcion = st.selectbox("A favor de:", ["Equipo A", "Equipo B"], key=f"op_{i}")
+                        sel_opcion = st.selectbox("A favor de:", [t1['name'], t2['name']], key=f"op_{i}")
+                        
                     linea = st.number_input("Línea del Casino:", value=0.0, step=0.5, key=f"l_{i}")
                 
                 with c_der:
@@ -291,10 +291,10 @@ else:
                     min_actual = c_min.number_input("Minuto:", min_value=1, max_value=60, value=15, key=f"min_{i}")
                     diff_oro = c_oro.number_input("Dif. Oro (Ej: -2500):", value=0, step=500, key=f"oro_{i}")
                     
-                    # Llamamos a la función mágica que detecta de qué juego estamos hablando
                     ajuste_oro = calculate_gold_impact(diff_oro, min_actual, slug)
 
-                prob_base = motor_cuantitativo_avanzado(hist_t1, hist_t2, wr_t1, wr_t2, sel_mer, sel_opcion, linea)
+                # PASAMOS EL NOMBRE DEL EQUIPO 1 AL MOTOR
+                prob_base = motor_cuantitativo_avanzado(wr_t1, wr_t2, sel_mer, sel_opcion, linea, t1['name'])
                 prob_final = max(0.05, min(0.95, prob_base + ajuste_oro))
 
                 st.markdown(f"""
