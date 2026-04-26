@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V34.5", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V34.6", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -26,8 +26,8 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V34.5</div>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>LIBERTAD TOTAL + ALERTA DE RIESGO</p>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V34.6</div>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>PARCHE ANTI-CRASH APLICADO</p>", unsafe_allow_html=True)
         with st.form("login_form"):
             u = st.text_input("Operador")
             p = st.text_input("Clave", type="password")
@@ -252,10 +252,12 @@ else:
                     mercados = ["Ganador", "Handicap", "Total Kills", "Primera Sangre", "Carrera a 10 Kills"]
 
                 sel_m = st.selectbox("Mercado", mercados, key=f"m_{i}")
-                clean_m = sel_m.replace("🔥 ", "") # Limpiamos el icono para la lógica
+                clean_m = sel_m.replace("🔥 ", "") 
                 
-                # INYECTOR DE MOMENTUM (SOLO LOL)
+                # INYECTOR DE MOMENTUM (SOLO LOL) - CON PARCHE ANTI-CRASH
                 ajuste_mapa_2 = 0
+                res_m1 = "Ninguno" # <- AQUÍ ESTÁ EL ESCUDO CONTRA EL ERROR ROJO
+                
                 if juego_sel == "League of Legends" and "PARTIDO" not in clean_m and clean_m != "-- Seleccione --":
                     st.markdown(f"<div style='border-top:1px solid {c_border}; margin-top:5px; padding-top:5px;'></div>", unsafe_allow_html=True)
                     if st.radio("📍 Operando en:", ["Mapa 1", "Mapa 2+"], horizontal=True, key=f"ctx_{i}") == "Mapa 2+":
@@ -263,7 +265,7 @@ else:
                         if res_m1 != "Ninguno":
                             es_t1_fav = wr1 >= wr2
                             if "Total" in clean_m or "Duración" in clean_m:
-                                ajuste_mapa_2 = +0.03 # Se aplicará si eligen 'Más' más abajo
+                                ajuste_mapa_2 = +0.03 
                             else:
                                 if res_m1 == t1['name']: ajuste_mapa_2 = (-0.02 if es_t1_fav else 0.01)
                                 elif res_m1 == t2['name']: ajuste_mapa_2 = (-0.02 if not es_t1_fav else 0.01)
@@ -272,16 +274,14 @@ else:
                 if clean_m != "-- Seleccione --":
                     if "Total" in clean_m or "Duración" in clean_m or "Tiempo" in clean_m: 
                         op_sel = st.radio("Opción:", ["Más (+)", "Menos (-)"], key=f"o_{i}")
-                        if "Menos" in op_sel: ajuste_mapa_2 = -ajuste_mapa_2 # Invierte el momentum para "Menos"
+                        if "Menos" in op_sel: ajuste_mapa_2 = -ajuste_mapa_2
                     elif "Ambos" in clean_m: 
                         op_sel = st.radio("Opción:", ["SÍ", "NO"], key=f"o_{i}")
                     else: 
                         op_sel = st.radio("A favor de:", [t1['name'], t2['name']], key=f"o_{i}")
-                        # Ajuste de momentum direccional
                         if res_m1 != "Ninguno" and op_sel == t2['name'] and ajuste_mapa_2 != 0:
                              ajuste_mapa_2 = -ajuste_mapa_2 
 
-                    # Auto-ajuste de Línea flexible
                     def_l = 0.0
                     if "Torres" in clean_m: def_l = 12.5
                     elif "Dragones" in clean_m: def_l = 4.5
@@ -293,13 +293,11 @@ else:
                     lin = c_l.number_input("Línea (Flexible)", value=def_l, key=f"l_{i}")
                     cuo = c_c.number_input("Cuota Casino", value=1.00, step=0.01, key=f"c_{i}")
 
-                    # Cálculo de probabilidad final en vivo
                     prob_base = motor_moba(wr1, wr2, clean_m, op_sel, lin, t1['name']) if cat == "⚔️ MOBAs" else motor_fps(wr1, wr2, clean_m, op_sel, lin, t1['name'])
                     prob_final = max(0.05, min(0.95, prob_base + ajuste_mapa_2))
                     
                     st.markdown(f"""<div class="prob-box"><div style="font-size:10px;">Probabilidad Final</div><div class="prob-number">{prob_final*100:.1f}%</div><div style="font-size:10px;">Cuota Mín: {1/prob_final:.2f}</div></div>""", unsafe_allow_html=True)
 
-                    # ALERTA DE RIESGO Y CRITERIO DE KELLY (EL ESCUDO)
                     if cuo > 1.01:
                         if cuo > (1/prob_final):
                             kelly = (((cuo - 1) * prob_final) - (1 - prob_final)) / (cuo - 1)
