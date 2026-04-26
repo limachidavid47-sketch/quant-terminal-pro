@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD, ACCESO QUANT Y ENLACE MÁGICO
 # ==========================================
-st.set_page_config(page_title="Quant Elite V33.3", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V33.4", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = ""
@@ -33,8 +33,8 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V33.3</div>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>MOTOR OMNI-SISTEMA (RESTAURADO)</p>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V33.4</div>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>MERCADOS COMPLETOS + TV EN VIVO</p>", unsafe_allow_html=True)
         
         with st.form("login_form", clear_on_submit=False):
             u = st.text_input("Operador")
@@ -166,6 +166,7 @@ st.markdown(f"""
     .badge-live {{ background: #EF4444; color: white; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; animation: pulse 2s infinite; }}
     .badge-time {{ background: {c_acc}; color: {c_bg}; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }}
     .stream-btn {{ background-color: #9146FF; color: white !important; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; display: block; margin-top: 15px; text-align: center; }}
+    .stream-btn:hover {{ background-color: #772CE8; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -191,7 +192,6 @@ st.sidebar.markdown("---")
 
 mercados_fps = ["-- Seleccione --", "⭐ PARTIDO: Ganador", "Handicap de Mapas", "Total de Mapas", "🗺️ MAPA: Ganador", "🗺️ MAPA: Handicap Rondas", "🗺️ MAPA: Total Rondas", "Ronda de Pistolas"]
 
-# RESTAURACIÓN TOTAL DE MERCADOS LOX Y DOTA
 if categoria == "⚔️ MOBAs":
     juegos_config = {
         "League of Legends": {"slug": "lol", "mercados": ["-- Seleccione --", "⭐ PARTIDO: Ganador", "Handicap", "Primera Sangre", "Primer Dragón", "Carrera a 5 Kills", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Dragones", "Total Barones", "Total Torres", "Total Kills", "Duración"]},
@@ -238,15 +238,22 @@ else:
 
         badge = "<span class='badge-live'>🔴 EN VIVO</span>" if m['status'] == 'running' else f"<span class='badge-time'>📅 { (datetime.strptime(m['begin_at'], '%Y-%m-%dT%H:%M:%SZ') - timedelta(hours=4)).strftime('%d/%m %H:%M') }</span>"
 
+        # RESTAURACIÓN: BOTÓN DE STREAMING
+        stream_link = m.get('official_video_url')
+        if not stream_link and m.get('streams_list'):
+            stream_link = m['streams_list'][0].get('raw_url', '')
+        boton_stream = f'<a href="{stream_link}" target="_blank" class="stream-btn">📺 Ver Transmisión en Vivo</a>' if stream_link else ''
+
         with (c1 if i % 2 == 0 else c2):
             st.markdown(f"""
             <div class="glass-card">
                 <div style="margin-bottom: 10px; font-size: 11px; display: flex; justify-content: space-between;"><span>🏆 {m['league']['name']}</span>{badge}</div>
                 <div style="display: flex; justify-content: space-around; align-items: center; text-align: center;">
-                    <div style="width: 40%;"><div style="font-size:12px; font-weight:bold;">{t1['name']}</div><img src="{t1.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr1*100:.0f}%</div></div>
+                    <div style="width: 40%;"><div style="font-size:12px; font-weight:bold;">{t1['name']}</div><img src="{t1.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr1*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form1])}</div></div>
                     <div style="font-size: 20px; font-weight: bold; color: {c_acc};">VS</div>
-                    <div style="width: 40%;"><div style="font-size:12px; font-weight:bold;">{t2['name']}</div><img src="{t2.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr2*100:.0f}%</div></div>
+                    <div style="width: 40%;"><div style="font-size:12px; font-weight:bold;">{t2['name']}</div><img src="{t2.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr2*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form2])}</div></div>
                 </div>
+                {boton_stream}
             </div>
             """, unsafe_allow_html=True)
 
@@ -259,5 +266,30 @@ else:
                         else: op = st.radio("A favor de:", [t1['name'], t2['name']], key=f"op_{i}")
                         lin = st.number_input("Línea:", value=0.0, step=0.5, key=f"l_{i}")
                     with c_der:
-                        prob = motor_moba(wr1, wr2, sel_mer, op, lin, t1['name']) if categoria == "⚔️ MOBAs" else motor_fps(wr1, wr2, sel_mer, op, lin, t1['name'], "Neutral", "Igualados")
+                        
+                        ajuste_mapa_2 = 0
+                        ajuste_oro = 0
+                        
+                        if "PARTIDO" not in sel_mer:
+                            st.markdown(f"<div style='border-top:1px solid {c_border}; margin-top:5px; padding-top:5px;'></div>", unsafe_allow_html=True)
+                            if st.radio("📍 Operando en:", ["Mapa 1", "Mapa 2+"], horizontal=True, key=f"ctx_{i}") == "Mapa 2+":
+                                res_m1 = st.selectbox("Ganador Mapa Anterior", ["Ninguno", t1['name'], t2['name']], key=f"m1_{i}")
+                                if res_m1 != "Ninguno":
+                                    es_t1_fav = wr1 >= wr2
+                                    if "Total" in sel_mer or "Duración" in sel_mer: ajuste_mapa_2 = +0.03 if "Más" in op else -0.03
+                                    else:
+                                        if res_m1 == t1['name']: ajuste_mapa_2 = (-0.02 if es_t1_fav else 0.01) if op == t1['name'] else (0.02 if es_t1_fav else -0.01)
+                                        elif res_m1 == t2['name']: ajuste_mapa_2 = (-0.02 if not es_t1_fav else 0.01) if op == t2['name'] else (0.02 if not es_t1_fav else -0.01)
+
+                        if categoria == "⚔️ MOBAs":
+                            if "PARTIDO" not in sel_mer and st.checkbox("💸 Modelo Oro (En Vivo)", key=f"rem_{i}"):
+                                c_min, c_oro = st.columns(2)
+                                ajuste_oro = calculate_gold_impact(c_oro.number_input("Oro Diff:", value=0, step=500, key=f"oro_{i}"), c_min.number_input("Minuto:", value=15, key=f"min_{i}"), slug)
+                            prob = motor_moba(wr1, wr2, sel_mer, op, lin, t1['name']) + ajuste_mapa_2 + ajuste_oro
+                        else:
+                            f_blood = st.selectbox("1ra Sangre (Ronda):", ["Neutral", "A favor", "En contra"], key=f"fb_{i}")
+                            eco_adv = st.selectbox("Armas:", ["Igualados", "Full Buy vs Eco", "Eco vs Full Buy"], key=f"eco_{i}")
+                            prob = motor_fps(wr1, wr2, sel_mer, op, lin, t1['name'], f_blood, eco_adv) + ajuste_mapa_2
+                            
+                        prob = max(0.05, min(0.95, prob))
                         st.markdown(f"""<div class="prob-box"><div style="font-size:10px;">Probabilidad</div><div class="prob-number">{prob*100:.1f}%</div><div style="font-size:10px;">Cuota Mín: {1/prob:.2f}</div></div>""", unsafe_allow_html=True)
