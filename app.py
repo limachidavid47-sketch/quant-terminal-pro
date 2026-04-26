@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD, ACCESO QUANT Y ENLACE MÁGICO
 # ==========================================
-st.set_page_config(page_title="Quant Elite V33.5", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V33.6", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = ""
@@ -33,8 +33,8 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V33.5</div>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>RADAR TOTAL + CEREBRO FINANCIERO</p>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V33.6</div>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>RADAR MAXIMIZADO + FORZADOR DE CACHÉ</p>", unsafe_allow_html=True)
         
         with st.form("login_form", clear_on_submit=False):
             u = st.text_input("Operador")
@@ -207,17 +207,25 @@ juego_sel = st.sidebar.radio("🎮 Disciplina", list(juegos_config.keys()))
 slug = juegos_config[juego_sel]["slug"]
 mercados_list = juegos_config[juego_sel]["mercados"]
 
+# BOTÓN DE CACHÉ RESTAURADO
+st.sidebar.markdown("---")
+if st.sidebar.button("🗑️ Limpiar Caché (Buscar Partidos)", use_container_width=True): 
+    st.cache_data.clear()
+    st.rerun()
+
 # ==========================================
-# 6. RADAR QUANT CORE (7 DÍAS)
+# 6. RADAR QUANT CORE (7 DÍAS MAXIMIZADO)
 # ==========================================
 st.markdown(f"<h2 style='color:{c_text};'>📡 Radar Quant: {juego_sel}</h2>", unsafe_allow_html=True)
     
 running = call_api_live(slug, "matches/running", "per_page=20")
-upcoming = call_api_live(slug, "matches/upcoming", "per_page=50&sort=begin_at")
+upcoming = call_api_live(slug, "matches/upcoming", "per_page=100&sort=begin_at") # LÍMITE AUMENTADO A 100
 partidos_totales = running + upcoming
 
 hoy_utc = datetime.utcnow()
 hoy_local = hoy_utc - timedelta(hours=4)
+# Margen de 12 horas hacia atrás por si un partido está retrasado en la API
+limite_inferior = hoy_local - timedelta(hours=12) 
 limite_semana = hoy_local + timedelta(days=7)
 
 partidos_filtrados = []
@@ -226,7 +234,8 @@ for p in partidos_totales:
     elif p['status'] == 'not_started' and p.get('begin_at'):
         dt_utc = datetime.strptime(p['begin_at'], "%Y-%m-%dT%H:%M:%SZ")
         dt_local = dt_utc - timedelta(hours=4)
-        if hoy_local.date() <= dt_local.date() <= limite_semana.date(): partidos_filtrados.append(p)
+        if limite_inferior <= dt_local <= limite_semana: 
+            partidos_filtrados.append(p)
 
 if not partidos_filtrados: st.info("No hay actividad programada en los próximos 7 días.")
 else:
@@ -296,7 +305,6 @@ else:
                         
                         if prob >= 0.75: st.markdown(f"<div class='sniper-alert'>🎯 ¡SNIPER ALERT!</div>", unsafe_allow_html=True)
                         
-                        # RESTAURACIÓN CEREBRO FINANCIERO Y CUOTAS DE CASINO
                         st.markdown(f"<div style='border-top:1px solid {c_border}; margin-top:10px; padding-top:10px;'></div>", unsafe_allow_html=True)
                         cuota = st.number_input("Cuota del Casino:", value=1.00, step=0.01, key=f"c_{i}")
                         
