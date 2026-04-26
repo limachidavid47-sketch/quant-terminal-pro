@@ -5,9 +5,9 @@ import math
 from datetime import datetime, timedelta
 
 # ==========================================
-# 1. SEGURIDAD, ACCESO QUANT Y ENLACE MÁGICO
+# 1. SEGURIDAD Y ACCESO QUANT
 # ==========================================
-st.set_page_config(page_title="Quant Elite V29", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V30", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = ""
@@ -36,7 +36,7 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V29</div>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V30</div>", unsafe_allow_html=True)
         st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>OMNI-SISTEMA HFT (MOBAs + FPS)</p>", unsafe_allow_html=True)
         
         with st.form("login_form", clear_on_submit=False):
@@ -49,14 +49,14 @@ def check_password():
                     st.session_state["password_correct"] = True
                     st.rerun()
                 else: 
-                    st.error("❌ Acceso Denegado. Credenciales inválidas.")
+                    st.error("❌ Acceso Denegado.")
         st.markdown("</div>", unsafe_allow_html=True)
     return False
 
 if not check_password(): st.stop()
 
 # ==========================================
-# 2. MOTOR DE DATOS HFT (6 HORAS CACHÉ)
+# 2. MOTOR DE DATOS HFT
 # ==========================================
 API_KEY = "F163TaN2efiwM8Ejb3xj0FWaeFAWzQgjbW8bPcuQwi9-ct_ZD4g"
 
@@ -95,7 +95,7 @@ def gestionar_bank(monto=None):
 bank_actual = gestionar_bank()
 
 # ==========================================
-# 3. MOTORES CUANTITATIVOS (MOBA & FPS)
+# 3. MOTORES CUANTITATIVOS
 # ==========================================
 def calculate_gold_impact(gold_diff, minute, game_slug):
     if minute <= 0: return 0
@@ -140,19 +140,17 @@ def motor_fps(wr1, wr2, mercado, opcion, linea, t1_name, f_blood, eco_adv):
 
     if f_blood == "A favor": prob_base += 0.18
     elif f_blood == "En contra": prob_base -= 0.18
-
     if eco_adv == "Full Buy vs Eco": prob_base += 0.25
     elif eco_adv == "Eco vs Full Buy": prob_base -= 0.25
 
     return max(0.05, min(0.95, prob_base))
 
 # ==========================================
-# 4. TEMAS Y CSS (ERROR CORREGIDO)
+# 4. TEMAS Y CSS
 # ==========================================
 st.sidebar.markdown("### 🎨 Apariencia")
 tema = st.sidebar.selectbox("", ["Azul Oscuro (Defecto)", "Verde Hacker", "Rojo Táctico"])
 
-# FIX: Las llaves del diccionario ahora coinciden exactamente con las opciones del selectbox
 colors = {
     "Azul Oscuro (Defecto)": ("#0B1120", "#1E293B", "#F1F5F9", "#38BDF8"), 
     "Verde Hacker": ("#000000", "#051A05", "#4ADE80", "#10B981"), 
@@ -165,7 +163,7 @@ st.markdown(f"""
     <style>
     .stApp {{ background-color: {c_bg}; color: {c_text}; font-family: 'Inter', sans-serif; }}
     [data-testid="stSidebar"] {{ background-color: {c_card} !important; border-right: 1px solid {c_border}; }}
-    .glass-card {{ background: {c_card}; border: 1px solid {c_border}; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
+    .glass-card {{ background: {c_card}; border: 1px solid {c_border}; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }}
     .team-logo {{ width: 60px; height: 60px; object-fit: contain; margin-bottom: 5px; }}
     .winrate-text {{ font-size: 13px; color: {c_acc}; font-weight: 900; margin-bottom: 5px; background: {c_btn}; padding: 2px 8px; border-radius: 10px; display: inline-block; }}
     .tower-plate {{ width: 14px; height: 8px; border-radius: 2px; display: inline-block; margin:0 2px; }}
@@ -173,6 +171,10 @@ st.markdown(f"""
     .prob-box {{ background: {c_btn}; padding: 15px; border-radius: 8px; border: 1px solid {c_acc}; text-align: center; margin-bottom: 15px; }}
     .prob-number {{ font-size: 32px; font-weight: 900; color: {c_acc}; }}
     .sniper-alert {{ background: rgba(16, 185, 129, 0.15); border: 2px dashed #10B981; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: center; color: #10B981; font-weight: bold; animation: pulse 1.5s infinite; }}
+    .badge-live {{ background: #EF4444; color: white; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; animation: pulse 2s infinite; }}
+    .badge-time {{ background: {c_acc}; color: {c_bg}; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }}
+    .stream-btn {{ background-color: #9146FF; color: white !important; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; display: block; margin-top: 15px; text-align: center; transition: 0.2s; width: 100%; }}
+    .stream-btn:hover {{ background-color: #772CE8; transform: scale(1.02); }}
     div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; border-radius: 8px; padding: 10px; }}
     [data-testid="stExpanderDetails"] {{ padding-bottom: 180px !important; }}
     @keyframes pulse {{ 0% {{opacity: 1;}} 50% {{opacity: 0.6;}} 100% {{opacity: 1;}} }}
@@ -197,15 +199,14 @@ if st.sidebar.button("💾 Guardar Saldo", use_container_width=True): gestionar_
 st.sidebar.markdown(f"<h1 style='text-align:center; color:{c_text};'>{bank_actual:.2f} U</h1>", unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
-
 categoria = st.sidebar.radio("🌐 TIPO DE OPERACIÓN", ["⚔️ MOBAs (Estrategia)", "🔫 Shooters (Tácticos)"])
 st.sidebar.markdown("---")
 
 if categoria == "⚔️ MOBAs (Estrategia)":
     juegos_config = {
-        "League of Legends": {"slug": "lol", "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap", "Primera Sangre", "Primer Dragón", "Carrera a 5 Kills", "Total Dragones", "Total Barones", "Total Torres", "Total Kills", "Duración de Partida"]},
-        "Dota 2": {"slug": "dota2", "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap", "Primer Roshan", "Carrera a 10 Kills", "Total Torres", "Total Kills", "Duración de Partida"]},
-        "Mobile Legends": {"slug": "mobile-legends", "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap", "Primer Lord", "Carrera a 5 Kills", "Total Kills", "Duración de Partida"]}
+        "League of Legends": {"slug": "lol", "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap", "Primera Sangre", "Primer Dragón", "Carrera a 5 Kills", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Dragones", "Total Barones", "Total Torres", "Total Kills", "Kills por Equipo", "Duración de Partida"]},
+        "Dota 2": {"slug": "dota2", "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap", "Primer Roshan", "Carrera a 5 Kills", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Torres", "Total Kills", "Kills por Equipo", "Duración de Partida"]},
+        "Mobile Legends": {"slug": "mobile-legends", "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap", "Primer Lord", "Carrera a 5 Kills", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Kills", "Kills por Equipo", "Duración de Partida"]}
     }
 else:
     juegos_config = {
@@ -229,13 +230,24 @@ running = call_api_live(slug, "matches/running", "per_page=10")
 upcoming = call_api_live(slug, "matches/upcoming", "per_page=30&sort=begin_at")
 partidos_totales = running + upcoming
 
-hoy = datetime.now()
-str_hoy = hoy.strftime("%Y-%m-%d")
-str_mañana = (hoy + timedelta(days=1)).strftime("%Y-%m-%d")
+# CALCULANDO LA ZONA HORARIA LOCAL PARA FILTRAR HOY Y MAÑANA (UTC-4)
+hoy_utc = datetime.utcnow()
+hoy_local = hoy_utc - timedelta(hours=4)
+str_hoy_local = hoy_local.strftime("%Y-%m-%d")
+str_mañana_local = (hoy_local + timedelta(days=1)).strftime("%Y-%m-%d")
 
-partidos_filtrados = [p for p in partidos_totales if p['status'] == 'running' or p['begin_at'].startswith(str_hoy) or p['begin_at'].startswith(str_mañana)]
+partidos_filtrados = []
+for p in partidos_totales:
+    if p['status'] == 'running':
+        partidos_filtrados.append(p)
+    elif p['status'] == 'not_started' and p.get('begin_at'):
+        # Convertir la hora del partido a la zona local
+        dt_utc = datetime.strptime(p['begin_at'], "%Y-%m-%dT%H:%M:%SZ")
+        dt_local = dt_utc - timedelta(hours=4)
+        if dt_local.strftime("%Y-%m-%d") in [str_hoy_local, str_mañana_local]:
+            partidos_filtrados.append(p)
 
-if not partidos_filtrados: st.info("Escaneando servidores. No hay actividad oficial inmediata.")
+if not partidos_filtrados: st.info("Escaneando servidores. No hay actividad oficial inmediata en las próximas 48 horas.")
 else:
     c1, c2 = st.columns(2)
     for i, m in enumerate(partidos_filtrados[:16]):
@@ -246,7 +258,22 @@ else:
         _, wr1, form1 = fetch_historical_data(slug, t1['id'])
         _, wr2, form2 = fetch_historical_data(slug, t2['id'])
 
-        badge = "<span class='badge-live'>🔴 EN VIVO</span>" if m['status'] == 'running' else "<span class='badge-time'>🕒 PRÓXIMO</span>"
+        # LÓGICA DE TIEMPO (RELOJ TÁCTICO RESTAURADO)
+        if m['status'] == 'running':
+            badge = "<span class='badge-live'>🔴 EN VIVO</span>"
+        else:
+            dt_utc = datetime.strptime(m['begin_at'], "%Y-%m-%dT%H:%M:%SZ")
+            dt_local = dt_utc - timedelta(hours=4)
+            if dt_local.strftime("%Y-%m-%d") == str_hoy_local:
+                badge = f"<span class='badge-time'>🕒 Hoy {dt_local.strftime('%H:%M')}</span>"
+            else:
+                badge = f"<span class='badge-time'>📅 {dt_local.strftime('%d/%m')} 🕒 {dt_local.strftime('%H:%M')}</span>"
+
+        # LÓGICA DE TRANSMISIÓN OFICIAL
+        stream_link = m.get('official_video_url')
+        if not stream_link and m.get('streams_list'):
+            stream_link = m['streams_list'][0].get('raw_url', '')
+        boton_stream = f'<a href="{stream_link}" target="_blank" class="stream-btn">📺 Ver Transmisión Oficial</a>' if stream_link else ''
 
         with (c1 if i % 2 == 0 else c2):
             st.markdown(f"""
@@ -257,6 +284,7 @@ else:
                     <div style="font-size: 20px; font-weight: bold; color: {c_acc};">VS</div>
                     <div style="width: 40%;"><div style="font-size:12px; font-weight:bold;">{t2['name']}</div><img src="{t2.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr2*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form2])}</div></div>
                 </div>
+                {boton_stream}
             </div>
             """, unsafe_allow_html=True)
 
@@ -266,8 +294,10 @@ else:
                 if sel_mer != "-- Seleccione un Mercado --":
                     c_izq, c_der = st.columns(2)
                     with c_izq:
-                        if "Total" in sel_mer or "Duración" in sel_mer: sel_opcion = st.radio("Opción:", ["Más (+)", "Menos (-)"], horizontal=True, key=f"op_{i}")
-                        else: sel_opcion = st.radio("A favor de:", [t1['name'], t2['name']], horizontal=True, key=f"op_{i}")
+                        if "Total" in sel_mer or "Duración" in sel_mer: 
+                            sel_opcion = st.radio("Opción:", ["Más (+)", "Menos (-)"], horizontal=True, key=f"op_{i}")
+                        else: 
+                            sel_opcion = st.radio("A favor de:", [t1['name'], t2['name']], horizontal=True, key=f"op_{i}")
                         linea = st.number_input("Línea de Casino:", value=0.0, step=0.5, key=f"l_{i}")
                     
                     with c_der:
