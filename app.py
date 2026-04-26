@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD, ACCESO QUANT Y ENLACE MÁGICO
 # ==========================================
-st.set_page_config(page_title="Quant Elite V33.6", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V33.7", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = ""
@@ -33,8 +33,8 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V33.6</div>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>RADAR MAXIMIZADO + FORZADOR DE CACHÉ</p>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V33.7</div>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>OPERACIÓN MLBB TOTAL</p>", unsafe_allow_html=True)
         
         with st.form("login_form", clear_on_submit=False):
             u = st.text_input("Operador")
@@ -114,7 +114,6 @@ def motor_moba(wr1, wr2, mercado, opcion, linea_casino, t1_name):
     elif "Total" in mercado or "Duración" in mercado:
         mom = (wr1 + wr2) / 2
         prob_base = 0.50 + (mom - 0.50) * 0.3 if "Más" in opcion else 0.50 - (mom - 0.50) * 0.3
-        if linea_casino > 35: prob_base += 0.10 if "Más" not in opcion else 0
     elif "Primer" in mercado or "Primera" in mercado:
         prob_base = 0.50 + (((wr1 / total_wr if es_eq1 else wr2 / total_wr) - 0.50) * 0.7)
     elif "Carrera" in mercado:
@@ -198,7 +197,8 @@ if categoria == "⚔️ MOBAs":
     juegos_config = {
         "League of Legends": {"slug": "lol", "mercados": ["-- Seleccione --", "⭐ PARTIDO: Ganador", "Handicap", "Primera Sangre", "Primer Dragón", "Carrera a 5 Kills", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Dragones", "Total Barones", "Total Torres", "Total Kills", "Duración"]},
         "Dota 2": {"slug": "dota2", "mercados": ["-- Seleccione --", "⭐ PARTIDO: Ganador", "Handicap", "Primer Roshan", "Carrera a 5 Kills", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Torres", "Total Kills", "Duración"]},
-        "Mobile Legends": {"slug": "mlbb", "mercados": ["-- Seleccione --", "⭐ PARTIDO: Ganador", "Handicap", "Primer Lord", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Torres", "Total Kills", "Duración"]}
+        # ¡AQUÍ ESTÁ EL AJUSTE EXACTO DE MOBILE LEGENDS!
+        "Mobile Legends": {"slug": "mlbb", "mercados": ["-- Seleccione --", "⭐ PARTIDO: Ganador", "Handicap", "Primera Sangre", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Kills", "Duración"]}
     }
 else:
     juegos_config = {"CS:GO 2": {"slug": "csgo", "mercados": mercados_fps}, "Valorant": {"slug": "valorant", "mercados": mercados_fps}}
@@ -207,7 +207,6 @@ juego_sel = st.sidebar.radio("🎮 Disciplina", list(juegos_config.keys()))
 slug = juegos_config[juego_sel]["slug"]
 mercados_list = juegos_config[juego_sel]["mercados"]
 
-# BOTÓN DE CACHÉ RESTAURADO
 st.sidebar.markdown("---")
 if st.sidebar.button("🗑️ Limpiar Caché (Buscar Partidos)", use_container_width=True): 
     st.cache_data.clear()
@@ -219,12 +218,11 @@ if st.sidebar.button("🗑️ Limpiar Caché (Buscar Partidos)", use_container_w
 st.markdown(f"<h2 style='color:{c_text};'>📡 Radar Quant: {juego_sel}</h2>", unsafe_allow_html=True)
     
 running = call_api_live(slug, "matches/running", "per_page=20")
-upcoming = call_api_live(slug, "matches/upcoming", "per_page=100&sort=begin_at") # LÍMITE AUMENTADO A 100
+upcoming = call_api_live(slug, "matches/upcoming", "per_page=100&sort=begin_at")
 partidos_totales = running + upcoming
 
 hoy_utc = datetime.utcnow()
 hoy_local = hoy_utc - timedelta(hours=4)
-# Margen de 12 horas hacia atrás por si un partido está retrasado en la API
 limite_inferior = hoy_local - timedelta(hours=12) 
 limite_semana = hoy_local + timedelta(days=7)
 
