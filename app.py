@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD, ACCESO QUANT Y ENLACE MÁGICO
 # ==========================================
-st.set_page_config(page_title="Quant Elite V31", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V32", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = ""
@@ -36,7 +36,7 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V31</div>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V32</div>", unsafe_allow_html=True)
         st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>OMNI-SISTEMA HFT (MOBAs + FPS)</p>", unsafe_allow_html=True)
         
         with st.form("login_form", clear_on_submit=False):
@@ -132,27 +132,22 @@ def motor_fps(wr1, wr2, mercado, opcion, linea, t1_name, f_blood, eco_adv):
     es_eq1 = (opcion == t1_name)
     prob_base = wr1 / total_wr if es_eq1 else wr2 / total_wr
 
-    # Lógica para Handicap (Mapas vs Rondas)
     if "Handicap" in mercado:
-        if "Mapas" in mercado: dificultad = (abs(linea) * 0.15) # Handicap de mapas es más difícil
-        else: dificultad = (abs(linea) * 0.04) # Handicap de rondas
+        if "Mapas" in mercado: dificultad = (abs(linea) * 0.15)
+        else: dificultad = (abs(linea) * 0.04)
         prob_base = prob_base - dificultad if linea < 0 else prob_base + dificultad
         
-    # Lógica para Totales
     elif "Total" in mercado:
         mom = (wr1 + wr2) / 2
         prob_base = 0.5 + (mom - 0.5) * 0.4 if "Más" in opcion else 0.5 - (mom - 0.5) * 0.4
         
-    # Lógica para Carreras (Race to X)
     elif "Carrera" in mercado:
         var = 0.55 if "5" in mercado else 0.70 if "9" in mercado else 0.85
         prob_base = 0.50 + (((wr1 / total_wr if es_eq1 else wr2 / total_wr) - 0.50) * var)
         
-    # Lógica para Rondas de Pistolas (Altísima Varianza)
     elif "Pistolas" in mercado:
-        prob_base = 0.50 + (((wr1 / total_wr if es_eq1 else wr2 / total_wr) - 0.50) * 0.4) # Casi 50/50
+        prob_base = 0.50 + (((wr1 / total_wr if es_eq1 else wr2 / total_wr) - 0.50) * 0.4) 
 
-    # Inyección Bayesiana In-Play
     if f_blood == "A favor": prob_base += 0.18
     elif f_blood == "En contra": prob_base -= 0.18
     if eco_adv == "Full Buy vs Eco": prob_base += 0.25
@@ -217,7 +212,6 @@ st.sidebar.markdown("---")
 categoria = st.sidebar.radio("🌐 TIPO DE OPERACIÓN", ["⚔️ MOBAs (Estrategia)", "🔫 Shooters (Tácticos)"])
 st.sidebar.markdown("---")
 
-# DEFINICIÓN DE MERCADOS SUPERIOR (ACTUALIZADA)
 mercados_fps = [
     "-- Seleccione un Mercado --", 
     "⭐ PARTIDO: Ganador del Partido", 
@@ -336,7 +330,27 @@ else:
                     with c_der:
                         st.write("")
                         prob_final = 0.50
+                        ajuste_mapa_2 = 0
                         
+                        # INYECTOR BANDA ELÁSTICA (SOLO MAPA 2)
+                        if "MAPA 2" in sel_mer:
+                            st.markdown(f"<div style='border-top:1px solid {c_border}; margin-top:5px; padding-top:5px;'></div>", unsafe_allow_html=True)
+                            st.markdown(f"<p style='font-size:11px; color:{c_acc}; font-weight:bold;'>🔁 Inyector Momentum (Resultado Mapa 1)</p>", unsafe_allow_html=True)
+                            res_m1 = st.selectbox("", ["Ninguno", t1['name'], t2['name']], key=f"m1_{i}")
+                            
+                            if res_m1 != "Ninguno":
+                                es_t1_fav = wr1 >= wr2
+                                if "Total" in sel_mer:
+                                    ajuste_mapa_2 = +0.03 if "Más" in sel_opcion else -0.03
+                                else:
+                                    if res_m1 == t1['name']: # T1 ganó el Mapa 1
+                                        if sel_opcion == t1['name']: ajuste_mapa_2 = -0.02 if es_t1_fav else 0.01
+                                        elif sel_opcion == t2['name']: ajuste_mapa_2 = 0.02 if es_t1_fav else -0.01
+                                    elif res_m1 == t2['name']: # T2 ganó el Mapa 1
+                                        if sel_opcion == t2['name']: ajuste_mapa_2 = -0.02 if not es_t1_fav else 0.01
+                                        elif sel_opcion == t1['name']: ajuste_mapa_2 = 0.02 if not es_t1_fav else -0.01
+                                        
+                        # MOTOR MOBA
                         if categoria == "⚔️ MOBAs (Estrategia)":
                             remontada = st.checkbox("💸 Modelo Oro", key=f"rem_{i}")
                             ajuste_oro = 0
@@ -346,13 +360,16 @@ else:
                                 diff_oro = c_oro.number_input("Oro Diff:", value=0, step=500, key=f"oro_{i}")
                                 ajuste_oro = calculate_gold_impact(diff_oro, min_actual, slug)
                             prob_base = motor_moba(wr1, wr2, sel_mer, sel_opcion, linea, t1['name'])
-                            prob_final = max(0.05, min(0.95, prob_base + ajuste_oro))
+                            prob_final = max(0.05, min(0.95, prob_base + ajuste_oro + ajuste_mapa_2))
                         
+                        # MOTOR FPS
                         else:
-                            st.markdown("<p style='font-size:11px; color:#10B981;'>Simulador Bayesiano In-Play</p>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='border-top:1px solid {c_border}; margin-top:5px; padding-top:5px;'></div>", unsafe_allow_html=True)
+                            st.markdown("<p style='font-size:11px; color:#10B981;'>🎯 Simulador Bayesiano In-Play</p>", unsafe_allow_html=True)
                             f_blood = st.selectbox("Primera Sangre (Ronda):", ["Neutral", "A favor", "En contra"], key=f"fb_{i}")
                             eco_adv = st.selectbox("Economía (Armas):", ["Igualados", "Full Buy vs Eco", "Eco vs Full Buy"], key=f"eco_{i}")
-                            prob_final = motor_fps(wr1, wr2, sel_mer, sel_opcion, linea, t1['name'], f_blood, eco_adv)
+                            prob_base = motor_fps(wr1, wr2, sel_mer, sel_opcion, linea, t1['name'], f_blood, eco_adv)
+                            prob_final = max(0.05, min(0.95, prob_base + ajuste_mapa_2))
 
                     st.markdown(f"""
                     <div class="prob-box">
