@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD, ACCESO QUANT Y ENLACE MÁGICO
 # ==========================================
-st.set_page_config(page_title="Quant Elite V33.4", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V33.5", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = ""
@@ -33,8 +33,8 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V33.4</div>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>MERCADOS COMPLETOS + TV EN VIVO</p>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V33.5</div>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>RADAR TOTAL + CEREBRO FINANCIERO</p>", unsafe_allow_html=True)
         
         with st.form("login_form", clear_on_submit=False):
             u = st.text_input("Operador")
@@ -167,6 +167,8 @@ st.markdown(f"""
     .badge-time {{ background: {c_acc}; color: {c_bg}; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }}
     .stream-btn {{ background-color: #9146FF; color: white !important; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; display: block; margin-top: 15px; text-align: center; }}
     .stream-btn:hover {{ background-color: #772CE8; }}
+    .sniper-alert {{ background: rgba(16, 185, 129, 0.15); border: 2px dashed #10B981; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: center; color: #10B981; font-weight: bold; animation: pulse 1.5s infinite; }}
+    div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; border-radius: 8px; padding: 10px; width: 100%; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -238,7 +240,6 @@ else:
 
         badge = "<span class='badge-live'>🔴 EN VIVO</span>" if m['status'] == 'running' else f"<span class='badge-time'>📅 { (datetime.strptime(m['begin_at'], '%Y-%m-%dT%H:%M:%SZ') - timedelta(hours=4)).strftime('%d/%m %H:%M') }</span>"
 
-        # RESTAURACIÓN: BOTÓN DE STREAMING
         stream_link = m.get('official_video_url')
         if not stream_link and m.get('streams_list'):
             stream_link = m['streams_list'][0].get('raw_url', '')
@@ -266,7 +267,6 @@ else:
                         else: op = st.radio("A favor de:", [t1['name'], t2['name']], key=f"op_{i}")
                         lin = st.number_input("Línea:", value=0.0, step=0.5, key=f"l_{i}")
                     with c_der:
-                        
                         ajuste_mapa_2 = 0
                         ajuste_oro = 0
                         
@@ -293,3 +293,21 @@ else:
                             
                         prob = max(0.05, min(0.95, prob))
                         st.markdown(f"""<div class="prob-box"><div style="font-size:10px;">Probabilidad</div><div class="prob-number">{prob*100:.1f}%</div><div style="font-size:10px;">Cuota Mín: {1/prob:.2f}</div></div>""", unsafe_allow_html=True)
+                        
+                        if prob >= 0.75: st.markdown(f"<div class='sniper-alert'>🎯 ¡SNIPER ALERT!</div>", unsafe_allow_html=True)
+                        
+                        # RESTAURACIÓN CEREBRO FINANCIERO Y CUOTAS DE CASINO
+                        st.markdown(f"<div style='border-top:1px solid {c_border}; margin-top:10px; padding-top:10px;'></div>", unsafe_allow_html=True)
+                        cuota = st.number_input("Cuota del Casino:", value=1.00, step=0.01, key=f"c_{i}")
+                        
+                        if cuota > 1.01:
+                            if cuota > (1/prob):
+                                kelly = (((cuota - 1) * prob) - (1 - prob)) / (cuota - 1)
+                                stake = (kelly * 0.25) * bank_actual
+                                if stake > 0:
+                                    st.success(f"🔥 Inversión Sugerida: {stake:.2f} U")
+                                    if st.button("Registrar Operación", key=f"btn_{i}"):
+                                        gestionar_bank(bank_actual - stake)
+                                        st.rerun()
+                            else: 
+                                st.warning("❌ Cuota sin valor matemático.")
