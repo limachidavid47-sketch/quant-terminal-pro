@@ -5,9 +5,9 @@ import math
 from datetime import datetime, timedelta
 
 # ==========================================
-# 1. SEGURIDAD Y ACCESO QUANT
+# 1. SEGURIDAD, ACCESO QUANT Y ENLACE MÁGICO
 # ==========================================
-st.set_page_config(page_title="Quant Elite V30", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V31", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = ""
@@ -36,7 +36,7 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V30</div>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V31</div>", unsafe_allow_html=True)
         st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>OMNI-SISTEMA HFT (MOBAs + FPS)</p>", unsafe_allow_html=True)
         
         with st.form("login_form", clear_on_submit=False):
@@ -95,7 +95,7 @@ def gestionar_bank(monto=None):
 bank_actual = gestionar_bank()
 
 # ==========================================
-# 3. MOTORES CUANTITATIVOS
+# 3. MOTORES CUANTITATIVOS (ACTUALIZADO FPS)
 # ==========================================
 def calculate_gold_impact(gold_diff, minute, game_slug):
     if minute <= 0: return 0
@@ -132,12 +132,27 @@ def motor_fps(wr1, wr2, mercado, opcion, linea, t1_name, f_blood, eco_adv):
     es_eq1 = (opcion == t1_name)
     prob_base = wr1 / total_wr if es_eq1 else wr2 / total_wr
 
+    # Lógica para Handicap (Mapas vs Rondas)
     if "Handicap" in mercado:
-        dificultad = (abs(linea) * 0.04) 
+        if "Mapas" in mercado: dificultad = (abs(linea) * 0.15) # Handicap de mapas es más difícil
+        else: dificultad = (abs(linea) * 0.04) # Handicap de rondas
         prob_base = prob_base - dificultad if linea < 0 else prob_base + dificultad
+        
+    # Lógica para Totales
     elif "Total" in mercado:
-        prob_base = 0.5 + ((wr1 + wr2) / 2 - 0.5) * 0.4 if "Más" in opcion else 0.5 - ((wr1 + wr2) / 2 - 0.5) * 0.4
+        mom = (wr1 + wr2) / 2
+        prob_base = 0.5 + (mom - 0.5) * 0.4 if "Más" in opcion else 0.5 - (mom - 0.5) * 0.4
+        
+    # Lógica para Carreras (Race to X)
+    elif "Carrera" in mercado:
+        var = 0.55 if "5" in mercado else 0.70 if "9" in mercado else 0.85
+        prob_base = 0.50 + (((wr1 / total_wr if es_eq1 else wr2 / total_wr) - 0.50) * var)
+        
+    # Lógica para Rondas de Pistolas (Altísima Varianza)
+    elif "Pistolas" in mercado:
+        prob_base = 0.50 + (((wr1 / total_wr if es_eq1 else wr2 / total_wr) - 0.50) * 0.4) # Casi 50/50
 
+    # Inyección Bayesiana In-Play
     if f_blood == "A favor": prob_base += 0.18
     elif f_blood == "En contra": prob_base -= 0.18
     if eco_adv == "Full Buy vs Eco": prob_base += 0.25
@@ -202,6 +217,28 @@ st.sidebar.markdown("---")
 categoria = st.sidebar.radio("🌐 TIPO DE OPERACIÓN", ["⚔️ MOBAs (Estrategia)", "🔫 Shooters (Tácticos)"])
 st.sidebar.markdown("---")
 
+# DEFINICIÓN DE MERCADOS SUPERIOR (ACTUALIZADA)
+mercados_fps = [
+    "-- Seleccione un Mercado --", 
+    "⭐ PARTIDO: Ganador del Partido", 
+    "⭐ PARTIDO: Handicap de Mapas", 
+    "⭐ PARTIDO: Total de Mapas (O/U)", 
+    "🗺️ MAPA 1: Ganador", 
+    "🗺️ MAPA 1: Handicap de Rondas", 
+    "🗺️ MAPA 1: Total de Rondas (O/U)", 
+    "🗺️ MAPA 1: Carrera a 5 Rondas", 
+    "🗺️ MAPA 1: Carrera a 9 Rondas", 
+    "🗺️ MAPA 1: Carrera a 13 Rondas",
+    "🗺️ MAPA 1: Ronda de Pistolas (R1/R13)",
+    "🗺️ MAPA 2: Ganador", 
+    "🗺️ MAPA 2: Handicap de Rondas", 
+    "🗺️ MAPA 2: Total de Rondas (O/U)", 
+    "🗺️ MAPA 2: Carrera a 5 Rondas", 
+    "🗺️ MAPA 2: Carrera a 9 Rondas", 
+    "🗺️ MAPA 2: Carrera a 13 Rondas",
+    "🗺️ MAPA 2: Ronda de Pistolas (R1/R13)"
+]
+
 if categoria == "⚔️ MOBAs (Estrategia)":
     juegos_config = {
         "League of Legends": {"slug": "lol", "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap", "Primera Sangre", "Primer Dragón", "Carrera a 5 Kills", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Dragones", "Total Barones", "Total Torres", "Total Kills", "Kills por Equipo", "Duración de Partida"]},
@@ -210,8 +247,8 @@ if categoria == "⚔️ MOBAs (Estrategia)":
     }
 else:
     juegos_config = {
-        "CS:GO 2": {"slug": "csgo", "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap de Rondas", "Total de Rondas (O/U)", "Ganador Ronda de Pistolas"]},
-        "Valorant": {"slug": "valorant", "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap de Rondas", "Total de Rondas (O/U)", "Ganador Ronda de Pistolas"]}
+        "CS:GO 2": {"slug": "csgo", "mercados": mercados_fps},
+        "Valorant": {"slug": "valorant", "mercados": mercados_fps}
     }
 
 st.sidebar.markdown(f"<h3 style='color:{c_text};'>🎮 Disciplina</h3>", unsafe_allow_html=True)
@@ -230,7 +267,6 @@ running = call_api_live(slug, "matches/running", "per_page=10")
 upcoming = call_api_live(slug, "matches/upcoming", "per_page=30&sort=begin_at")
 partidos_totales = running + upcoming
 
-# CALCULANDO LA ZONA HORARIA LOCAL PARA FILTRAR HOY Y MAÑANA (UTC-4)
 hoy_utc = datetime.utcnow()
 hoy_local = hoy_utc - timedelta(hours=4)
 str_hoy_local = hoy_local.strftime("%Y-%m-%d")
@@ -241,7 +277,6 @@ for p in partidos_totales:
     if p['status'] == 'running':
         partidos_filtrados.append(p)
     elif p['status'] == 'not_started' and p.get('begin_at'):
-        # Convertir la hora del partido a la zona local
         dt_utc = datetime.strptime(p['begin_at'], "%Y-%m-%dT%H:%M:%SZ")
         dt_local = dt_utc - timedelta(hours=4)
         if dt_local.strftime("%Y-%m-%d") in [str_hoy_local, str_mañana_local]:
@@ -258,7 +293,6 @@ else:
         _, wr1, form1 = fetch_historical_data(slug, t1['id'])
         _, wr2, form2 = fetch_historical_data(slug, t2['id'])
 
-        # LÓGICA DE TIEMPO (RELOJ TÁCTICO RESTAURADO)
         if m['status'] == 'running':
             badge = "<span class='badge-live'>🔴 EN VIVO</span>"
         else:
@@ -269,7 +303,6 @@ else:
             else:
                 badge = f"<span class='badge-time'>📅 {dt_local.strftime('%d/%m')} 🕒 {dt_local.strftime('%H:%M')}</span>"
 
-        # LÓGICA DE TRANSMISIÓN OFICIAL
         stream_link = m.get('official_video_url')
         if not stream_link and m.get('streams_list'):
             stream_link = m['streams_list'][0].get('raw_url', '')
