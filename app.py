@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD, ACCESO QUANT Y ENLACE MÁGICO
 # ==========================================
-st.set_page_config(page_title="Quant Elite V32", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V33", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = ""
@@ -36,7 +36,7 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V32</div>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V33</div>", unsafe_allow_html=True)
         st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>OMNI-SISTEMA HFT (MOBAs + FPS)</p>", unsafe_allow_html=True)
         
         with st.form("login_form", clear_on_submit=False):
@@ -95,7 +95,7 @@ def gestionar_bank(monto=None):
 bank_actual = gestionar_bank()
 
 # ==========================================
-# 3. MOTORES CUANTITATIVOS (ACTUALIZADO FPS)
+# 3. MOTORES CUANTITATIVOS 
 # ==========================================
 def calculate_gold_impact(gold_diff, minute, game_slug):
     if minute <= 0: return 0
@@ -212,32 +212,27 @@ st.sidebar.markdown("---")
 categoria = st.sidebar.radio("🌐 TIPO DE OPERACIÓN", ["⚔️ MOBAs (Estrategia)", "🔫 Shooters (Tácticos)"])
 st.sidebar.markdown("---")
 
+# FIX VISUAL: MENÚ LIMPIO SIN DUPLICADOS
 mercados_fps = [
     "-- Seleccione un Mercado --", 
     "⭐ PARTIDO: Ganador del Partido", 
     "⭐ PARTIDO: Handicap de Mapas", 
     "⭐ PARTIDO: Total de Mapas (O/U)", 
-    "🗺️ MAPA 1: Ganador", 
-    "🗺️ MAPA 1: Handicap de Rondas", 
-    "🗺️ MAPA 1: Total de Rondas (O/U)", 
-    "🗺️ MAPA 1: Carrera a 5 Rondas", 
-    "🗺️ MAPA 1: Carrera a 9 Rondas", 
-    "🗺️ MAPA 1: Carrera a 13 Rondas",
-    "🗺️ MAPA 1: Ronda de Pistolas (R1/R13)",
-    "🗺️ MAPA 2: Ganador", 
-    "🗺️ MAPA 2: Handicap de Rondas", 
-    "🗺️ MAPA 2: Total de Rondas (O/U)", 
-    "🗺️ MAPA 2: Carrera a 5 Rondas", 
-    "🗺️ MAPA 2: Carrera a 9 Rondas", 
-    "🗺️ MAPA 2: Carrera a 13 Rondas",
-    "🗺️ MAPA 2: Ronda de Pistolas (R1/R13)"
+    "🗺️ MAPA: Ganador", 
+    "🗺️ MAPA: Handicap de Rondas", 
+    "🗺️ MAPA: Total de Rondas (O/U)", 
+    "🗺️ MAPA: Carrera a 5 Rondas", 
+    "🗺️ MAPA: Carrera a 9 Rondas", 
+    "🗺️ MAPA: Carrera a 13 Rondas",
+    "🗺️ MAPA: Ronda de Pistolas (R1/R13)"
 ]
 
 if categoria == "⚔️ MOBAs (Estrategia)":
+    # Agregué la etiqueta ⭐ PARTIDO para mantener la consistencia con FPS
     juegos_config = {
-        "League of Legends": {"slug": "lol", "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap", "Primera Sangre", "Primer Dragón", "Carrera a 5 Kills", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Dragones", "Total Barones", "Total Torres", "Total Kills", "Kills por Equipo", "Duración de Partida"]},
-        "Dota 2": {"slug": "dota2", "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap", "Primer Roshan", "Carrera a 5 Kills", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Torres", "Total Kills", "Kills por Equipo", "Duración de Partida"]},
-        "Mobile Legends": {"slug": "mobile-legends", "mercados": ["-- Seleccione un Mercado --", "Ganador del Partido", "Handicap", "Primer Lord", "Carrera a 5 Kills", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Kills", "Kills por Equipo", "Duración de Partida"]}
+        "League of Legends": {"slug": "lol", "mercados": ["-- Seleccione un Mercado --", "⭐ PARTIDO: Ganador del Partido", "Handicap", "Primera Sangre", "Primer Dragón", "Carrera a 5 Kills", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Dragones", "Total Barones", "Total Torres", "Total Kills", "Kills por Equipo", "Duración de Partida"]},
+        "Dota 2": {"slug": "dota2", "mercados": ["-- Seleccione un Mercado --", "⭐ PARTIDO: Ganador del Partido", "Handicap", "Primer Roshan", "Carrera a 5 Kills", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Torres", "Total Kills", "Kills por Equipo", "Duración de Partida"]},
+        "Mobile Legends": {"slug": "mobile-legends", "mercados": ["-- Seleccione un Mercado --", "⭐ PARTIDO: Ganador del Partido", "Handicap", "Primer Lord", "Carrera a 5 Kills", "Carrera a 10 Kills", "Carrera a 15 Kills", "Total Kills", "Kills por Equipo", "Duración de Partida"]}
     }
 else:
     juegos_config = {
@@ -332,33 +327,39 @@ else:
                         prob_final = 0.50
                         ajuste_mapa_2 = 0
                         
-                        # INYECTOR BANDA ELÁSTICA (SOLO MAPA 2)
-                        if "MAPA 2" in sel_mer:
+                        # FIX UX: SELECTOR DE MAPA Y MOMENTUM GLOBAL (Aplica a MOBAs y FPS)
+                        if "PARTIDO" not in sel_mer:
                             st.markdown(f"<div style='border-top:1px solid {c_border}; margin-top:5px; padding-top:5px;'></div>", unsafe_allow_html=True)
-                            st.markdown(f"<p style='font-size:11px; color:{c_acc}; font-weight:bold;'>🔁 Inyector Momentum (Resultado Mapa 1)</p>", unsafe_allow_html=True)
-                            res_m1 = st.selectbox("", ["Ninguno", t1['name'], t2['name']], key=f"m1_{i}")
+                            mapa_context = st.radio("📍 Operando en:", ["Mapa 1", "Mapa 2 (o posterior)"], horizontal=True, key=f"ctx_{i}")
                             
-                            if res_m1 != "Ninguno":
-                                es_t1_fav = wr1 >= wr2
-                                if "Total" in sel_mer:
-                                    ajuste_mapa_2 = +0.03 if "Más" in sel_opcion else -0.03
-                                else:
-                                    if res_m1 == t1['name']: # T1 ganó el Mapa 1
-                                        if sel_opcion == t1['name']: ajuste_mapa_2 = -0.02 if es_t1_fav else 0.01
-                                        elif sel_opcion == t2['name']: ajuste_mapa_2 = 0.02 if es_t1_fav else -0.01
-                                    elif res_m1 == t2['name']: # T2 ganó el Mapa 1
-                                        if sel_opcion == t2['name']: ajuste_mapa_2 = -0.02 if not es_t1_fav else 0.01
-                                        elif sel_opcion == t1['name']: ajuste_mapa_2 = 0.02 if not es_t1_fav else -0.01
+                            if mapa_context == "Mapa 2 (o posterior)":
+                                st.markdown(f"<p style='font-size:11px; color:{c_acc}; font-weight:bold;'>🔁 Inyector Momentum (Ganador Mapa Anterior)</p>", unsafe_allow_html=True)
+                                res_m1 = st.selectbox("", ["Ninguno", t1['name'], t2['name']], key=f"m1_{i}")
+                                
+                                if res_m1 != "Ninguno":
+                                    es_t1_fav = wr1 >= wr2
+                                    if "Total" in sel_mer or "Duración" in sel_mer:
+                                        ajuste_mapa_2 = +0.03 if "Más" in sel_opcion else -0.03
+                                    else:
+                                        if res_m1 == t1['name']: # T1 ganó el Mapa anterior
+                                            if sel_opcion == t1['name']: ajuste_mapa_2 = -0.02 if es_t1_fav else 0.01
+                                            elif sel_opcion == t2['name']: ajuste_mapa_2 = 0.02 if es_t1_fav else -0.01
+                                        elif res_m1 == t2['name']: # T2 ganó el Mapa anterior
+                                            if sel_opcion == t2['name']: ajuste_mapa_2 = -0.02 if not es_t1_fav else 0.01
+                                            elif sel_opcion == t1['name']: ajuste_mapa_2 = 0.02 if not es_t1_fav else -0.01
                                         
                         # MOTOR MOBA
                         if categoria == "⚔️ MOBAs (Estrategia)":
-                            remontada = st.checkbox("💸 Modelo Oro", key=f"rem_{i}")
-                            ajuste_oro = 0
-                            if remontada:
-                                c_min, c_oro = st.columns(2)
-                                min_actual = c_min.number_input("Min:", value=15, key=f"min_{i}")
-                                diff_oro = c_oro.number_input("Oro Diff:", value=0, step=500, key=f"oro_{i}")
-                                ajuste_oro = calculate_gold_impact(diff_oro, min_actual, slug)
+                            if "PARTIDO" not in sel_mer:
+                                remontada = st.checkbox("💸 Modelo Oro (En Vivo)", key=f"rem_{i}")
+                                ajuste_oro = 0
+                                if remontada:
+                                    c_min, c_oro = st.columns(2)
+                                    min_actual = c_min.number_input("Min:", value=15, key=f"min_{i}")
+                                    diff_oro = c_oro.number_input("Oro Diff:", value=0, step=500, key=f"oro_{i}")
+                                    ajuste_oro = calculate_gold_impact(diff_oro, min_actual, slug)
+                            else: ajuste_oro = 0 # No se usa oro para el partido entero
+                            
                             prob_base = motor_moba(wr1, wr2, sel_mer, sel_opcion, linea, t1['name'])
                             prob_final = max(0.05, min(0.95, prob_base + ajuste_oro + ajuste_mapa_2))
                         
