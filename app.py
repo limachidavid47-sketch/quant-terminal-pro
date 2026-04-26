@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V36.1", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V36.2", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -26,8 +26,8 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V36.1</div>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>UI DUAL: RADAR + BÓVEDA BLANCA</p>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V36.2</div>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>UI DUAL: PESTAÑAS 100% GARANTIZADAS</p>", unsafe_allow_html=True)
         with st.form("login_form"):
             u = st.text_input("Operador")
             p = st.text_input("Clave", type="password")
@@ -69,7 +69,6 @@ def gestionar_historial(nueva_op=None, index_update=None, nuevo_estado=None):
     df.to_csv(file_name, index=False)
     return df
 
-# Aumentamos el TTL a 120 seg para evitar parpadeos y recargas pesadas
 @st.cache_data(ttl=120)
 def call_api_live(game_slug, endpoint, params_str=""):
     url = f"https://api.pandascore.co/{game_slug}/{endpoint}?{params_str}"
@@ -150,7 +149,7 @@ def motor_fps(wr1, wr2, mercado, opcion, linea, t1_name):
     return max(0.05, min(0.95, prob))
 
 # ==========================================
-# 4. TEMAS Y CSS (PINTURA INTACTA + BÓVEDA BLANCA)
+# 4. TEMAS Y CSS 
 # ==========================================
 st.sidebar.markdown("### 🎨 Apariencia")
 tema = st.sidebar.selectbox("", ["Azul Oscuro (Defecto)", "Verde Hacker", "Rojo Táctico"])
@@ -181,10 +180,6 @@ st.markdown(f"""
     .white-row {{ display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #F1F5F9; font-size: 13px; font-weight: 700; }}
     .white-center {{ text-align: right; font-weight: 900; color: #2563EB; font-size: 14px; flex-grow: 1; }}
     .player-box {{ background: #F8FAFC; padding: 8px 12px; border-radius: 8px; border: 1px solid #E2E8F0; font-size: 11px; text-align: center; margin-top: 15px; font-weight: 700; color: #475569; width: 48%; display: inline-block; }}
-    
-    /* Arreglo para que las pestañas de Streamlit se vean bien en modo oscuro */
-    [data-baseweb="tab-list"] {{ background-color: {c_card}; border-radius: 8px; padding: 5px; }}
-    [data-baseweb="tab"] {{ color: {c_text} !important; font-weight: bold; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -210,7 +205,7 @@ if not df_ops.empty:
             if c_p.button("❌", key=f"l_{idx}"): gestionar_historial(index_update=idx, nuevo_estado="PERDIDA"); st.rerun()
 
 # ==========================================
-# 6. RADAR Y SISTEMA DUAL
+# 6. RADAR Y SISTEMA DUAL (PESTAÑAS GARANTIZADAS)
 # ==========================================
 st.sidebar.markdown("---")
 cat = st.sidebar.radio("Disciplina", ["⚔️ MOBAs", "🔫 Shooters"])
@@ -222,7 +217,6 @@ if st.sidebar.button("🗑️ Limpiar Caché (Forzar Oracle)", use_container_wid
 
 st.markdown(f"<h2 style='color:{c_text};'>📡 Radar Quant: {juego_sel}</h2>", unsafe_allow_html=True)
 
-# API CALL: Orden correlativo (sort=begin_at)
 running = call_api_live(slug, "matches/running", "per_page=20")
 upcoming = call_api_live(slug, "matches/upcoming", "per_page=100&sort=begin_at")
 partidos_totales = running + upcoming
@@ -261,7 +255,6 @@ else:
                 wr1, form1, k1, tow1, drg1, time1 = fetch_oracle_elixir_data(t1['name'])
                 wr2, form2, k2, tow2, drg2, time2 = fetch_oracle_elixir_data(t2['name'])
                 
-                # MATEMÁTICA REAL COMBINADA
                 exp_k = k1 + k2
                 exp_tow = tow1 + tow2
                 exp_drg = drg1 + drg2
@@ -283,7 +276,7 @@ else:
                 p_drag, op_drag = get_tot(p_d_mas)
                 p_ambos, op_ambos = (p_ambos_si, "SÍ") if p_ambos_si >= 0.50 else (1 - p_ambos_si, "NO")
                 
-                # 1. TARJETA DE CRISTAL (SIEMPRE ARRIBA Y VISIBLE)
+                # 1. LA TARJETA PRINCIPAL (Siempre visible)
                 st.markdown(f"""
                 <div class="glass-card">
                     <div style="margin-bottom: 10px; font-size: 11px; display: flex; justify-content: space-between;"><span>🏆 {league_name}</span>{badge}</div>
@@ -296,7 +289,7 @@ else:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # 2. PESTAÑAS (DEBAJO DE LA TARJETA)
+                # 2. LAS PESTAÑAS GARANTIZADAS
                 tab_vivo, tab_historial = st.tabs(["⚙️ OPERAR (Radar)", "📊 HISTORIAL (Bóveda)"])
                 
                 with tab_vivo:
@@ -364,7 +357,7 @@ else:
                     """, unsafe_allow_html=True)
 
             else:
-                # INTERFAZ PARA DOTA 2, CS:GO, VALORANT, MLBB (Intacta)
+                # INTERFAZ PARA DOTA 2 Y DEMÁS JUEGOS (INTACTA CON SU PROPIO EXPANDER)
                 wr1, form1 = fetch_historical_data_general(slug, t1['id'])
                 wr2, form2 = fetch_historical_data_general(slug, t2['id'])
                 st.markdown(f"""
