@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V34.3", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V34.4", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -26,8 +26,8 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V34.3</div>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>AUDITORÍA LOL: 10 PARTIDAS + SMART SCAN</p>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V34.4</div>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>UI RESTAURADA + SMART LOL</p>", unsafe_allow_html=True)
         with st.form("login_form"):
             u = st.text_input("Operador")
             p = st.text_input("Clave", type="password")
@@ -41,7 +41,7 @@ def check_password():
 if not check_password(): st.stop()
 
 # ==========================================
-# 2. FINANZAS Y GESTIÓN DE DATOS (10 PARTIDAS)
+# 2. FINANZAS Y GESTIÓN DE DATOS
 # ==========================================
 API_KEY = "F163TaN2efiwM8Ejb3xj0FWaeFAWzQgjbW8bPcuQwi9-ct_ZD4g"
 
@@ -82,13 +82,22 @@ def gestionar_historial(nueva_op=None, index_update=None, nuevo_estado=None):
     df.to_csv(file_name, index=False)
     return df
 
+@st.cache_data(ttl=60)
+def call_api_live(game_slug, endpoint, params_str=""):
+    url = f"https://api.pandascore.co/{game_slug}/{endpoint}?{params_str}"
+    headers = {"accept": "application/json", "authorization": f"Bearer {API_KEY}"}
+    try:
+        res = requests.get(url, headers=headers)
+        return res.json() if res.status_code == 200 else []
+    except: return []
+
 # ==========================================
 # 3. MOTOR MATEMÁTICO INTEGRAL
 # ==========================================
 def motor_moba(wr1, wr2, mercado, opcion, linea, t1_name):
     total_wr = wr1 + wr2 if (wr1+wr2)>0 else 1
     prob = wr1/total_wr if t1_name in opcion else wr2/total_wr
-    if "Total" in mercado or "Duración" in mercado or "Ambos" in mercado:
+    if "Total" in mercado or "Duración" in mercado or "Tiempo" in mercado or "Ambos" in mercado:
         mom = (wr1 + wr2) / 2
         prob = 0.50 + (mom - 0.50) * 0.3 if "Más" in opcion or "SÍ" in opcion else 0.50 - (mom - 0.50) * 0.3
         if "Ambos" in mercado: prob = 0.72 + (mom - 0.50) * 0.15
@@ -96,10 +105,49 @@ def motor_moba(wr1, wr2, mercado, opcion, linea, t1_name):
         prob = 0.50 + (( (wr1/total_wr if t1_name in opcion else wr2/total_wr) - 0.50) * 0.7)
     return max(0.05, min(0.95, prob))
 
+def motor_fps(wr1, wr2, mercado, opcion, linea, t1_name):
+    total_wr = wr1 + wr2 if (wr1 + wr2) > 0 else 1
+    prob = wr1/total_wr if opcion == t1_name else wr2/total_wr
+    if "Handicap" in mercado: prob = prob - (abs(linea)*0.15) if linea < 0 else prob + (abs(linea)*0.15)
+    elif "Total" in mercado: prob = 0.5 + ((wr1+wr2)/2 - 0.5)*0.4 if "Más" in opcion else 0.5 - ((wr1+wr2)/2 - 0.5)*0.4
+    return max(0.05, min(0.95, prob))
+
 # ==========================================
-# 4. INTERFAZ Y RADAR SMART LOL
+# 4. TEMAS Y CSS (RESTAURADO AL 100%)
 # ==========================================
-st.sidebar.markdown(f"## 🏦 Bankroll: {gestionar_bank():.2f} U")
+st.sidebar.markdown("### 🎨 Apariencia")
+tema = st.sidebar.selectbox("", ["Azul Oscuro (Defecto)", "Verde Hacker", "Rojo Táctico"])
+colors = {"Azul Oscuro (Defecto)": ("#0B1120", "#1E293B", "#F1F5F9", "#38BDF8"), "Verde Hacker": ("#000000", "#051A05", "#4ADE80", "#10B981"), "Rojo Táctico": ("#0A0000", "#1A0505", "#FECACA", "#EF4444")}
+c_bg, c_card, c_text, c_acc = colors[tema]
+c_sub, c_border, c_btn = "#94A3B8", "#334155", "#0F172A"
+
+st.markdown(f"""
+    <style>
+    .stApp {{ background-color: {c_bg}; color: {c_text}; font-family: 'Inter', sans-serif; }}
+    [data-testid="stSidebar"] {{ background-color: {c_card} !important; border-right: 1px solid {c_border}; }}
+    .glass-card {{ background: {c_card}; border: 1px solid {c_border}; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }}
+    .team-logo {{ width: 60px; height: 60px; object-fit: contain; margin-bottom: 5px; }}
+    .winrate-text {{ font-size: 13px; color: {c_acc}; font-weight: 900; margin-bottom: 5px; background: {c_btn}; padding: 2px 8px; border-radius: 10px; display: inline-block; }}
+    .tower-plate {{ width: 14px; height: 8px; border-radius: 2px; display: inline-block; margin:0 2px; }}
+    .win {{ background-color: #10B981; }} .loss {{ background-color: #EF4444; }} .unknown {{ background-color: #475569; }}
+    .prob-box {{ background: {c_btn}; padding: 15px; border-radius: 8px; border: 1px solid {c_acc}; text-align: center; margin-bottom: 15px; }}
+    .prob-number {{ font-size: 32px; font-weight: 900; color: {c_acc}; }}
+    .badge-live {{ background: #EF4444; color: white; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; animation: pulse 2s infinite; }}
+    .badge-time {{ background: {c_acc}; color: {c_bg}; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }}
+    .stream-btn {{ background-color: #9146FF; color: white !important; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 12px; font-weight: bold; display: block; margin-top: 15px; text-align: center; }}
+    .stream-btn:hover {{ background-color: #772CE8; }}
+    div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; border-radius: 8px; padding: 10px; width: 100%; }}
+    </style>
+""", unsafe_allow_html=True)
+
+# ==========================================
+# 5. SIDEBAR: FINANZAS Y AUDITORÍA
+# ==========================================
+st.sidebar.markdown("---")
+st.sidebar.markdown(f"<h2 style='color:{c_acc}; text-align:center;'>🏦 Mi Bankroll</h2>", unsafe_allow_html=True)
+nuevo_bank = st.sidebar.number_input("Saldo (U):", value=float(bank_actual), step=10.0)
+if st.sidebar.button("💾 Guardar Saldo", use_container_width=True): gestionar_bank(nuevo_bank); st.rerun()
+
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📊 Auditoría Táctica")
 df_ops = gestionar_historial()
@@ -107,84 +155,137 @@ if not df_ops.empty:
     for idx, row in df_ops.iloc[::-1].iterrows():
         est = row['Estado']
         color = "#10B981" if est == "GANADA" else "#EF4444" if est == "PERDIDA" else "#334155"
-        st.sidebar.markdown(f'<div style="border-left:4px solid {color}; background:#1E293B; padding:5px; border-radius:5px; margin-bottom:5px; font-size:10px;"><b>{row["Partido"]}</b><br>{row["Mercado"]} ({est})</div>', unsafe_allow_html=True)
+        st.sidebar.markdown(f'<div style="border-left:4px solid {color}; background:#1E293B; padding:8px; border-radius:5px; margin-bottom:5px; font-size:11px;"><b>{row["Partido"]}</b><br>{row["Mercado"]} ({est})</div>', unsafe_allow_html=True)
         if est == "PENDIENTE":
             c_g, c_p = st.sidebar.columns(2)
             if c_g.button("✅", key=f"w_{idx}"): gestionar_historial(index_update=idx, nuevo_estado="GANADA"); st.rerun()
             if c_p.button("❌", key=f"l_{idx}"): gestionar_historial(index_update=idx, nuevo_estado="PERDIDA"); st.rerun()
 
+# ==========================================
+# 6. MOTOR DE DATOS Y RADAR (CON 7 DÍAS)
+# ==========================================
+st.sidebar.markdown("---")
 cat = st.sidebar.radio("Disciplina", ["⚔️ MOBAs", "🔫 Shooters"])
 juegos = {"League of Legends": "lol", "Dota 2": "dota2", "Mobile Legends": "mlbb", "CS:GO 2": "csgo", "Valorant": "valorant"}
 juego_sel = st.sidebar.selectbox("Juego", list(juegos.keys()))
 slug = juegos[juego_sel]
 
-st.title(f"Radar Quant: {juego_sel}")
-partidos = requests.get(f"https://api.pandascore.co/{slug}/matches?filter[status]=running,not_started&per_page=15&sort=begin_at", headers={"authorization": f"Bearer {API_KEY}"}).json()
+if st.sidebar.button("🗑️ Limpiar Caché", use_container_width=True): st.cache_data.clear(); st.rerun()
 
-if partidos:
-    for i, m in enumerate(partidos):
+st.markdown(f"<h2 style='color:{c_text};'>📡 Radar Quant: {juego_sel}</h2>", unsafe_allow_html=True)
+
+# Recuperación del radar de 7 días
+running = call_api_live(slug, "matches/running", "per_page=20")
+upcoming = call_api_live(slug, "matches/upcoming", "per_page=100&sort=begin_at")
+partidos_totales = running + upcoming
+
+hoy_utc = datetime.utcnow()
+hoy_local = hoy_utc - timedelta(hours=4)
+limite_inferior = hoy_local - timedelta(hours=12) 
+limite_semana = hoy_local + timedelta(days=7)
+
+partidos_filtrados = []
+for p in partidos_totales:
+    if p['status'] == 'running': partidos_filtrados.append(p)
+    elif p['status'] == 'not_started' and p.get('begin_at'):
+        dt_utc = datetime.strptime(p['begin_at'], "%Y-%m-%dT%H:%M:%SZ")
+        dt_local = dt_utc - timedelta(hours=4)
+        if limite_inferior <= dt_local <= limite_semana: partidos_filtrados.append(p)
+
+if not partidos_filtrados: 
+    st.info("No hay actividad programada en los próximos 7 días.")
+else:
+    c1, c2 = st.columns(2)
+    for i, m in enumerate(partidos_filtrados[:16]):
         opp = m.get('opponents', [])
         if len(opp) < 2: continue
         t1, t2 = opp[0]['opponent'], opp[1]['opponent']
         
         # AUDITORÍA DE 10 PARTIDAS REALES
-        wr1, _ = fetch_historical_data(slug, t1['id'])
-        wr2, _ = fetch_historical_data(slug, t2['id'])
+        wr1, form1 = fetch_historical_data(slug, t1['id'])
+        wr2, form2 = fetch_historical_data(slug, t2['id'])
 
-        with st.expander(f"⚔️ {t1['name']} vs {t2['name']} (Auditoría 10G)"):
-            if juego_sel == "League of Legends":
-                # LÓGICA SMART-SCAN 75-100%
-                p_gan = wr1/(wr1+wr2) if wr1>=wr2 else wr2/(wr1+wr2)
-                eq_gan = t1['name'] if wr1>=wr2 else t2['name']
-                p_m = 0.5 + ((wr1+wr2)/2 - 0.5)*0.3
-                p_tot = p_m if p_m >= 0.5 else 1-p_m
-                op_tot = "Más" if p_m >= 0.5 else "Menos"
+        badge = "<span class='badge-live'>🔴 EN VIVO</span>" if m['status'] == 'running' else f"<span class='badge-time'>📅 { (datetime.strptime(m['begin_at'], '%Y-%m-%dT%H:%M:%SZ') - timedelta(hours=4)).strftime('%d/%m %H:%M') }</span>"
+        
+        stream_link = m.get('official_video_url') or (m['streams_list'][0].get('raw_url', '') if m.get('streams_list') else '')
+        boton_stream = f'<a href="{stream_link}" target="_blank" class="stream-btn">📺 Ver Transmisión en Vivo</a>' if stream_link else ''
 
-                def fmt(n, p, d=""):
-                    ico = "🔥 " if p >= 0.75 else ""
-                    return f"{ico}{n} | {d} ({p*100:.1f}%) C.Mín: {1/p:.2f}"
+        with (c1 if i % 2 == 0 else c2):
+            # LA INTERFAZ VISUAL RESTAURADA AL 100%
+            st.markdown(f"""
+            <div class="glass-card">
+                <div style="margin-bottom: 10px; font-size: 11px; display: flex; justify-content: space-between;"><span>🏆 {m['league']['name']}</span>{badge}</div>
+                <div style="display: flex; justify-content: space-around; align-items: center; text-align: center;">
+                    <div style="width: 40%;"><div style="font-size:12px; font-weight:bold;">{t1['name']}</div><img src="{t1.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr1*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form1])}</div></div>
+                    <div style="font-size: 20px; font-weight: bold; color: {c_acc};">VS</div>
+                    <div style="width: 40%;"><div style="font-size:12px; font-weight:bold;">{t2['name']}</div><img src="{t2.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr2*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form2])}</div></div>
+                </div>
+                {boton_stream}
+            </div>
+            """, unsafe_allow_html=True)
 
-                mercados = [
-                    "-- Seleccione Mercado Prediseñado --",
-                    fmt("⭐ Ganador", p_gan, eq_gan),
-                    fmt("🗼 Total Torres", p_tot, f"{op_tot} 12.5"),
-                    fmt("🐉 Total Dragones", p_tot, f"{op_tot} 4.5"),
-                    fmt("👾 Total Barones", p_tot, f"{op_tot} 1.5"),
-                    fmt("⚔️ Total Kills", p_tot, f"{op_tot} 28.5"),
-                    fmt("⏱️ Tiempo Total", p_tot, f"{op_tot} 32.5"),
-                    fmt("🩸 Primera Sangre", 0.5+((p_gan-0.5)*0.7), eq_gan),
-                    "Flexible: Ambos Asesinan Dragón", "Flexible: Handicap"
-                ]
-            elif juego_sel == "Mobile Legends":
-                mercados = ["Ganador", "Handicap", "Primera Sangre", "Carrera a 10 Kills", "Total Kills", "Duración"]
-            else:
-                mercados = ["Ganador", "Handicap", "Total Kills", "Primera Sangre"]
+            with st.expander(f"⚙️ Operar Mercado Quant"):
+                if juego_sel == "League of Legends":
+                    # LÓGICA SMART-SCAN 75-100%
+                    p_gan = wr1/(wr1+wr2) if (wr1+wr2)>0 else 0.5
+                    eq_gan = t1['name'] if wr1>=wr2 else t2['name']
+                    p_m = 0.5 + ((wr1+wr2)/2 - 0.5)*0.3
+                    p_tot = p_m if p_m >= 0.5 else 1-p_m
+                    op_tot = "Más" if p_m >= 0.5 else "Menos"
 
-            sel_m = st.selectbox("Inyector de Músculo Quant", mercados, key=f"m_{i}")
-            
-            # Interfaz de Operación
-            if "Total" in sel_m or "Tiempo" in sel_m: op_sel = st.radio("Opción:", ["Más (+)", "Menos (-)"], key=f"o_{i}")
-            else: op_sel = st.radio("A favor de:", [t1['name'], t2['name'], "SÍ", "NO"], key=f"o_{i}")
+                    def fmt(n, p, d=""):
+                        ico = "🔥 " if p >= 0.75 else ""
+                        return f"{ico}{n} | {d} ({p*100:.1f}%) C.Mín: {1/p:.2f}"
 
-            # Auto-ajuste de Línea
-            def_l = 0.0
-            if "Torres" in sel_m: def_l = 12.5
-            elif "Dragones" in sel_m: def_l = 4.5
-            elif "Barones" in sel_m: def_l = 1.5
-            elif "Kills" in sel_m: def_l = 28.5
-            elif "Tiempo" in sel_m: def_l = 32.5
+                    mercados = [
+                        "-- Seleccione Mercado Prediseñado --",
+                        fmt("⭐ Ganador", p_gan, eq_gan),
+                        fmt("🗼 Total Torres", p_tot, f"{op_tot} 12.5"),
+                        fmt("🐉 Total Dragones", p_tot, f"{op_tot} 4.5"),
+                        fmt("👾 Total Barones", p_tot, f"{op_tot} 1.5"),
+                        fmt("⚔️ Total Kills", p_tot, f"{op_tot} 28.5"),
+                        fmt("⏱️ Tiempo Total", p_tot, f"{op_tot} 32.5"),
+                        fmt("🩸 Primera Sangre", 0.5+((p_gan-0.5)*0.7), eq_gan),
+                        "Flexible: Ambos Asesinan Dragón", "Flexible: Handicap"
+                    ]
+                elif juego_sel == "Mobile Legends":
+                    mercados = ["Ganador", "Handicap", "Primera Sangre", "Carrera a 10 Kills", "Total Kills", "Duración"]
+                else:
+                    mercados = ["Ganador", "Handicap", "Total Kills", "Primera Sangre"]
 
-            c_l, c_c = st.columns(2)
-            lin = c_l.number_input("Línea", value=def_l, key=f"l_{i}")
-            cuo = c_c.number_input("Cuota Casino", value=1.85, key=f"c_{i}")
+                sel_m = st.selectbox("Mercado", mercados, key=f"m_{i}")
+                
+                # Interfaz de Operación
+                if "Total" in sel_m or "Tiempo" in sel_m or "Duración" in sel_m: op_sel = st.radio("Opción:", ["Más (+)", "Menos (-)"], key=f"o_{i}")
+                elif "Ambos" in sel_m: op_sel = st.radio("Opción:", ["SÍ", "NO"], key=f"o_{i}")
+                else: op_sel = st.radio("A favor de:", [t1['name'], t2['name']], key=f"o_{i}")
 
-            if st.button("REGISTRAR DISPARO", key=f"reg_{i}"):
-                gestionar_bank(bank_actual - (0.05 * bank_actual))
-                gestionar_historial(nueva_op={
-                    "Fecha": (datetime.utcnow()-timedelta(hours=4)).strftime('%Y-%m-%d %H:%M:%S'),
-                    "Juego": juego_sel, "Partido": f"{t1['name']} vs {t2['name']}",
-                    "Mercado": sel_m.split("|")[0].strip(), "Opcion": op_sel, "Cuota": cuo,
-                    "Inversion": round(0.05 * bank_actual, 2), "Estado": "PENDIENTE",
-                    "MatchID": m['id'], "TeamID": t1['id'] if t1['name'] in op_sel else t2['id']
-                })
-                st.rerun()
+                # Auto-ajuste de Línea
+                def_l = 0.0
+                if "Torres" in sel_m: def_l = 12.5
+                elif "Dragones" in sel_m: def_l = 4.5
+                elif "Barones" in sel_m: def_l = 1.5
+                elif "Kills" in sel_m and "Total" in sel_m: def_l = 28.5
+                elif "Tiempo" in sel_m or "Duración" in sel_m: def_l = 32.5
+
+                c_l, c_c = st.columns(2)
+                lin = c_l.number_input("Línea (Flexible)", value=def_l, key=f"l_{i}")
+                cuo = c_c.number_input("Cuota Casino", value=1.85, step=0.01, key=f"c_{i}")
+
+                # Cálculo de probabilidad final en vivo
+                prob_final = motor_moba(wr1, wr2, sel_m, op_sel, lin, t1['name']) if cat == "⚔️ MOBAs" else motor_fps(wr1, wr2, sel_m, op_sel, lin, t1['name'])
+                
+                st.markdown(f"""<div class="prob-box"><div style="font-size:10px;">Probabilidad Final</div><div class="prob-number">{prob_final*100:.1f}%</div><div style="font-size:10px;">Cuota Mín: {1/prob_final:.2f}</div></div>""", unsafe_allow_html=True)
+
+                if st.button("REGISTRAR DISPARO", key=f"reg_{i}"):
+                    stake = 0.05 * bank_actual
+                    gestionar_bank(bank_actual - stake)
+                    mercado_limpio = sel_m.split("|")[0].strip() if "|" in sel_m else sel_m
+                    gestionar_historial(nueva_op={
+                        "Fecha": (datetime.utcnow()-timedelta(hours=4)).strftime('%Y-%m-%d %H:%M:%S'),
+                        "Juego": juego_sel, "Partido": f"{t1['name']} vs {t2['name']}",
+                        "Mercado": mercado_limpio, "Opcion": op_sel, "Cuota": cuo,
+                        "Inversion": round(stake, 2), "Estado": "PENDIENTE",
+                        "MatchID": m['id'], "TeamID": t1['id'] if t1['name'] in op_sel else t2['id']
+                    })
+                    st.rerun()
