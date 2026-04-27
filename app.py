@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V36.3", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V36.4", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -26,8 +26,8 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V36.3</div>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>ESTABILIDAD TOTAL Y PESTAÑAS BLINDADAS</p>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V36.4</div>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>UI SWITCH: RADIO BUTTONS BLINDADOS</p>", unsafe_allow_html=True)
         with st.form("login_form"):
             u = st.text_input("Operador")
             p = st.text_input("Clave", type="password")
@@ -149,7 +149,7 @@ def motor_fps(wr1, wr2, mercado, opcion, linea, t1_name):
     return max(0.05, min(0.95, prob))
 
 # ==========================================
-# 4. TEMAS Y CSS (LIMPIEZA DE BUGS)
+# 4. TEMAS Y CSS 
 # ==========================================
 st.sidebar.markdown("### 🎨 Apariencia")
 tema = st.sidebar.selectbox("", ["Azul Oscuro (Defecto)", "Verde Hacker", "Rojo Táctico"])
@@ -157,7 +157,6 @@ colors = {"Azul Oscuro (Defecto)": ("#0B1120", "#1E293B", "#F1F5F9", "#38BDF8"),
 c_bg, c_card, c_text, c_acc = colors[tema]
 c_sub, c_border, c_btn = "#94A3B8", "#334155", "#0F172A"
 
-# NOTA: CSS de pestañas eliminado para garantizar visibilidad nativa en Streamlit.
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {c_bg}; color: {c_text}; font-family: 'Inter', sans-serif; }}
@@ -181,6 +180,9 @@ st.markdown(f"""
     .white-row {{ display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #F1F5F9; font-size: 13px; font-weight: 700; }}
     .white-center {{ text-align: right; font-weight: 900; color: #2563EB; font-size: 14px; flex-grow: 1; }}
     .player-box {{ background: #F8FAFC; padding: 8px 12px; border-radius: 8px; border: 1px solid #E2E8F0; font-size: 11px; text-align: center; margin-top: 15px; font-weight: 700; color: #475569; width: 48%; display: inline-block; }}
+    
+    /* Diseño especial para los Radio Buttons del Switcher */
+    div.row-widget.stRadio > div {{ flex-direction: row; justify-content: center; background: {c_btn}; padding: 10px; border-radius: 8px; border: 1px solid {c_border}; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -206,7 +208,7 @@ if not df_ops.empty:
             if c_p.button("❌", key=f"l_{idx}"): gestionar_historial(index_update=idx, nuevo_estado="PERDIDA"); st.rerun()
 
 # ==========================================
-# 6. RADAR PRINCIPAL
+# 6. RADAR Y SISTEMA DUAL (SWITCH RADIO BUTTON)
 # ==========================================
 st.sidebar.markdown("---")
 cat = st.sidebar.radio("Disciplina", ["⚔️ MOBAs", "🔫 Shooters"])
@@ -276,7 +278,7 @@ else:
                 p_drag, op_drag = get_tot(p_d_mas)
                 p_ambos, op_ambos = (p_ambos_si, "SÍ") if p_ambos_si >= 0.50 else (1 - p_ambos_si, "NO")
                 
-                # 1. TARJETA PRINCIPAL (Siempre Arriba)
+                # 1. LA TARJETA PRINCIPAL (Siempre Arriba)
                 st.markdown(f"""
                 <div class="glass-card">
                     <div style="margin-bottom: 10px; font-size: 11px; display: flex; justify-content: space-between;"><span>🏆 {league_name}</span>{badge}</div>
@@ -289,11 +291,17 @@ else:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # 2. EL CONTENEDOR SEGURO: EXPANDER + PESTAÑAS
+                # 2. EL CONTENEDOR SEGURO: SWITCHER (RADIO BUTTON) EN LUGAR DE PESTAÑAS
                 with st.expander(f"⚙️ Panel Quant: {t1['name']} vs {t2['name']}"):
-                    tab_vivo, tab_historial = st.tabs(["📡 EN VIVO", "📊 HISTORIAL PROMEDIO"])
                     
-                    with tab_vivo:
+                    vista_seleccionada = st.radio(
+                        "Seleccionar Panel:", 
+                        ["📡 EN VIVO (Radar)", "📊 HISTORIAL (Bóveda)"], 
+                        horizontal=True, 
+                        key=f"vista_{i}"
+                    )
+                    
+                    if vista_seleccionada == "📡 EN VIVO (Radar)":
                         mercados = ["-- Seleccione --", "⭐ PARTIDO: Ganador", "🗼 Total Torres", "🐉 Total Dragones", "👾 Total Barones", "⚔️ Total Kills", "⏱️ Duración", "🤝 Ambos Asesinan Dragón", "🩸 Primera Sangre", "⚖️ Handicap"]
                         sel_m = st.selectbox("Mercado", mercados, key=f"m_{i}")
                         clean_m = sel_m.replace("🔥 ", "").replace("❄️🔥 ", "") 
@@ -325,7 +333,7 @@ else:
                                     st.success(f"🔥 Sugerido: {stake:.2f} U"); 
                                     if st.button("REGISTRAR", key=f"reg_{i}"): gestionar_bank(bank_actual - stake); st.rerun()
 
-                    with tab_historial:
+                    else: # Si selecciona "📊 HISTORIAL (Bóveda)"
                         st.markdown(f"""
                         <div class="white-board">
                             <div class="league-title">🏆 {league_name}</div>
