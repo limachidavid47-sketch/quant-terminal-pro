@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V45.0", layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V47.0", layout="centered", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -24,8 +24,8 @@ def check_password():
     """, unsafe_allow_html=True)
     
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V45.0</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>MOTOR DE LECTURA ÚNICA Y BÚSQUEDA INTELIGENTE</p>", unsafe_allow_html=True)
+    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V47.0</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>MOTOR ESCÁNER Y GESTIÓN DE MEMORIA RAM</p>", unsafe_allow_html=True)
     with st.form("login_form"):
         u = st.text_input("Operador")
         p = st.text_input("Clave", type="password")
@@ -77,7 +77,7 @@ def call_api_live(game_slug, endpoint, params_str=""):
     except: return []
 
 # ==========================================
-# 3. EL NUEVO CEREBRO (MOTOR QUANT DE LECTURA ÚNICA)
+# 3. EL NUEVO CEREBRO (LECTURA EN RAM Y ESCÁNER)
 # ==========================================
 @st.cache_data(ttl=21600, show_spinner=False)
 def fetch_historical_data_general(game_slug, team_id):
@@ -96,47 +96,42 @@ def get_fallback_stats(team_id):
     wr, form = fetch_historical_data_general("lol", team_id)
     return wr, form, 0, 0, 0, 0, 0, 0 
 
-# ⚡ FUNCIÓN DE LECTURA ÚNICA (Solo lee 1 vez y guarda en RAM)
+# ⚡ LECTURA ÚNICA CON ALERTA DE ERRORES (Cero silenciadores)
 @st.cache_data(ttl=28800, show_spinner=False)
 def load_oracle_database():
+    archivo = "datos_oracle.zip"
     columnas_clave = ['teamname', 'position', 'date', 'result', 'teamkills', 'towers', 'dragons', 'barons', 'firstblood', 'gamelength']
+    
+    if not os.path.exists(archivo):
+        return pd.DataFrame(), f"El archivo '{archivo}' no existe en la carpeta."
+        
     try:
-        if os.path.exists("datos_oracle.zip"):
-            return pd.read_csv("datos_oracle.zip", compression='zip', usecols=lambda c: c in columnas_clave, low_memory=False)
-        elif os.path.exists("datos_oracle.csv"):
-            return pd.read_csv("datos_oracle.csv", usecols=lambda c: c in columnas_clave, low_memory=False)
-        else:
-            url = f"https://oracleselixir-downloadable-match-data.s3-us-west-2.amazonaws.com/{datetime.utcnow().year}_LoL_esports_match_data_from_OraclesElixir.csv"
-            return pd.read_csv(url, usecols=lambda c: c in columnas_clave, low_memory=False)
+        df = pd.read_csv(archivo, compression='zip', usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
+        df.columns = df.columns.str.strip().str.lower()
+        return df, "OK"
+    except ValueError as ve:
+        return pd.DataFrame(), f"Error de columnas en el CSV interno: {ve}"
     except Exception as e:
-        return pd.DataFrame()
+        return pd.DataFrame(), f"No se pudo descomprimir o leer el archivo: {e}"
 
-# ⚡ BÚSQUEDA INTELIGENTE EN MEMORIA (No crashea, no colapsa)
-@st.cache_data(ttl=21600, show_spinner=False)
-def get_team_stats(team_name, team_id):
-    df_completo = load_oracle_database()
+# ⚡ BÚSQUEDA ULTRARRÁPIDA (Sin memoria caché pesada)
+def get_team_stats(team_name, team_id, df_completo):
     if df_completo.empty: return get_fallback_stats(team_id)
     
-    # 1. Filtro de búsqueda "Fuzzy" (Eliminar basura del nombre)
-    ignorar = ['team', 'esports', 'challengers', 'academy', 'gaming', 'club', 'hanjin', 'dplus', 'sports', 'lol']
-    palabras = [w for w in team_name.split() if w.lower() not in ignorar]
+    # 1. Búsqueda Exacta
+    df_team = df_completo[(df_completo['teamname'].str.lower() == team_name.lower()) & (df_completo['position'] == 'team')]
     
-    df_team = pd.DataFrame()
-    
-    # 2. Buscar por palabras clave en la Base de Datos RAM
-    for w in palabras:
-        df_team = df_completo[(df_completo['teamname'].str.contains(w, case=False, na=False)) & (df_completo['position'] == 'team')]
-        if not df_team.empty: break
-            
     if df_team.empty:
-        # Último recurso, primera palabra
-        w0 = team_name.split()[0]
-        df_team = df_completo[(df_completo['teamname'].str.contains(w0, case=False, na=False)) & (df_completo['position'] == 'team')]
+        # 2. Búsqueda Fuzzy Inteligente
+        basura = ['esports', 'challengers', 'academy', 'gaming', 'club', 'sports', 'youth', 'team', 'hanjin', 'dplus', 'oksavebank']
+        words = team_name.lower().split()
+        clean_words = [w for w in words if w not in basura]
+        core_name = clean_words[0] if clean_words else team_name.lower().split()[0]
+        
+        df_team = df_completo[(df_completo['teamname'].str.lower().str.contains(core_name, na=False)) & (df_completo['position'] == 'team')]
 
-    if df_team.empty:
-        return get_fallback_stats(team_id)
+    if df_team.empty: return get_fallback_stats(team_id)
 
-    # 3. Procesar resultados reales
     df_team['date'] = pd.to_datetime(df_team['date'], errors='coerce')
     df_team = df_team.sort_values(by='date', ascending=False).head(10)
     
@@ -249,7 +244,7 @@ juegos = {"League of Legends": "lol", "Dota 2": "dota2", "Mobile Legends": "mlbb
 juego_sel = st.sidebar.selectbox("Juego", list(juegos.keys()))
 slug = juegos[juego_sel]
 
-if st.sidebar.button("🗑️ Limpiar Caché (Forzar Base Datos)", use_container_width=True): st.cache_data.clear(); st.rerun()
+if st.sidebar.button("🗑️ Limpiar Caché (Forzar ZIP)", use_container_width=True): st.cache_data.clear(); st.rerun()
 
 # ==========================================
 # 6. RADAR PRINCIPAL
@@ -266,6 +261,12 @@ if juego_sel == "League of Legends":
         label_visibility="collapsed"
     )
 st.markdown('</div>', unsafe_allow_html=True)
+
+# 🚨 CARGA DE DATOS MAESTRA AL INICIO (Con Panel de Diagnóstico)
+if juego_sel == "League of Legends":
+    df_oracle, oracle_status = load_oracle_database()
+    if oracle_status != "OK":
+        st.error(f"🚨 ALERTA DE SISTEMA: {oracle_status} (Se han bloqueado los cálculos profundos por seguridad).")
 
 running = call_api_live(slug, "matches/running", "per_page=20")
 upcoming = call_api_live(slug, "matches/upcoming", "per_page=100&sort=begin_at")
@@ -296,9 +297,9 @@ else:
         league_name = m['league']['name']
 
         if juego_sel == "League of Legends":
-            # RECOLECTA 8 VARIABLES REALES
-            wr1, form1, k1, tow1, drg1, bar1, fb1, time1 = get_team_stats(t1['name'], t1['id']) 
-            wr2, form2, k2, tow2, drg2, bar2, fb2, time2 = get_team_stats(t2['name'], t2['id']) 
+            # EXTRACCIÓN A LA VELOCIDAD DE LA LUZ
+            wr1, form1, k1, tow1, drg1, bar1, fb1, time1 = get_team_stats(t1['name'], t1['id'], df_oracle) 
+            wr2, form2, k2, tow2, drg2, bar2, fb2, time2 = get_team_stats(t2['name'], t2['id'], df_oracle) 
             
             p_gan_max = max(wr1, wr2) / (wr1+wr2 if (wr1+wr2)>0 else 1)
             eq_gan = t1['name'] if wr1 >= wr2 else t2['name']
@@ -329,7 +330,7 @@ else:
                 res_kil = f'<span class="w-pred">{op_kills} ({p_kills*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_kills:.2f}</span>'
                 res_tim = f'<span class="w-pred">{op_tiempo} ({p_tiempo*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_tiempo:.2f}</span>'
             else:
-                sd_html = f'<span style="color:{c_sub}; font-weight:bold;">S/D (Faltan Datos Locales)</span>'
+                sd_html = f'<span style="color:{c_sub}; font-weight:bold;">S/D (Solo Winrate)</span>'
                 res_fb = res_tow = res_drg = res_bar = res_kil = res_tim = sd_html
                 k1 = k2 = tow1 = tow2 = drg1 = drg2 = bar1 = bar2 = time1 = time2 = "S/D"
 
@@ -348,19 +349,36 @@ else:
                     mercados = ["-- Seleccione --", "⭐ PARTIDO: Ganador", "🗼 Total Torres", "🐉 Total Dragones", "👾 Total Barones", "⚔️ Total Kills", "⏱️ Duración", "🩸 Primera Sangre"]
                     sel_m = st.selectbox("Mercado", mercados, key=f"m_{i}")
                     if sel_m != "-- Seleccione --":
+                        if not has_data and sel_m in ["Total Torres", "Total Dragones", "Total Barones", "Total Kills", "Duración", "Primera Sangre"]:
+                            st.warning("⚠️ Sin datos matemáticos profundos en el ZIP. Cuidado al operar.")
+                        
                         if "Total" in sel_m or "Duración" in sel_m: op_sel = st.radio("Opción:", ["Más (+)", "Menos (-)"], key=f"o_{i}")
                         else: op_sel = st.radio("A favor de:", [t1['name'], t2['name']], key=f"o_{i}")
                         c_l, c_c = st.columns(2)
+                        def_l = 12.5 if "Torres" in sel_m else 4.5 if "Dragones" in sel_m else 1.5 if "Barones" in sel_m else 28.5 if "Kills" in sel_m else 32.5 if "Duración" in sel_m else 0.0
+                        lin = c_l.number_input("Línea Flexible", value=def_l, key=f"l_{i}")
                         cuo = c_c.number_input("Cuota Casino", value=1.00, step=0.01, key=f"c_{i}")
-                        prob_base = motor_moba(wr1, wr2, sel_m, op_sel, 0, t1['name'])
-                        st.markdown(f"""<div class="prob-box"><div style="font-size:12px;">Probabilidad</div><div class="prob-number">{prob_base*100:.1f}%</div><div style="font-size:10px;">C.Mín: {1/prob_base:.2f}</div></div>""", unsafe_allow_html=True)
+                        
+                        if has_data:
+                            if "Kills" in sel_m: prob_base = 0.50 + (exp_k - lin) * 0.03
+                            elif "Torres" in sel_m: prob_base = 0.50 + (exp_tow - lin) * 0.10
+                            elif "Dragones" in sel_m: prob_base = 0.50 + (exp_drg - lin) * 0.15
+                            elif "Barones" in sel_m: prob_base = 0.50 + (exp_bar - lin) * 0.25
+                            elif "Duración" in sel_m: prob_base = 0.50 + (exp_time - lin) * 0.05
+                            elif "Sangre" in sel_m: prob_base = p_fb_real if t1['name'] in op_sel else (1 - p_fb_real)
+                            else: prob_base = motor_moba(wr1, wr2, sel_m, op_sel, lin, t1['name'])
+                        else:
+                            prob_base = motor_moba(wr1, wr2, sel_m, op_sel, lin, t1['name'])
+
+                        prob_final = max(0.05, min(0.95, prob_base))
+                        st.markdown(f"""<div class="prob-box"><div style="font-size:12px;">Probabilidad</div><div class="prob-number">{prob_final*100:.1f}%</div><div style="font-size:10px;">C.Mín: {1/prob_final:.2f}</div></div>""", unsafe_allow_html=True)
 
             elif vista_global == "📊 MODO BÓVEDA (Tablas Premium)":
                 n1, n2 = t1['name'][:10], t2['name'][:10]
                 st.markdown(f"""<div class="boveda-board">
                     <div class="league-title">🏆 {league_name}</div>
                     <div class="boveda-row"><div class="w-col-1">⭐ GANADOR</div><div class="w-col-2">{n1}: {wr1*100:.0f}%<br>{n2}: {wr2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">{eq_gan} ({p_gan_max*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_gan_max:.2f}</span></div></div>
-                    <div class="boveda-row"><div class="w-col-1">🩸 1RA SANGRE</div><div class="w-col-2">Historial ZIP<br>H2H Real</div><div class="w-col-3">{res_fb}</div></div>
+                    <div class="boveda-row"><div class="w-col-1">🩸 1RA SANGRE</div><div class="w-col-2">Historial Directo<br>H2H Real</div><div class="w-col-3">{res_fb}</div></div>
                     <div class="boveda-row"><div class="w-col-1">🗼 TORRES (12.5)</div><div class="w-col-2">{n1}: {tow1 if not has_data else f"{tow1:.1f}"}<br>{n2}: {tow2 if not has_data else f"{tow2:.1f}"}</div><div class="w-col-3">{res_tow}</div></div>
                     <div class="boveda-row"><div class="w-col-1">🐉 DRAGONES (4.5)</div><div class="w-col-2">{n1}: {drg1 if not has_data else f"{drg1:.1f}"}<br>{n2}: {drg2 if not has_data else f"{drg2:.1f}"}</div><div class="w-col-3">{res_drg}</div></div>
                     <div class="boveda-row"><div class="w-col-1">👾 BARONES (1.5)</div><div class="w-col-2">{n1}: {bar1 if not has_data else f"{bar1:.1f}"}<br>{n2}: {bar2 if not has_data else f"{bar2:.1f}"}</div><div class="w-col-3">{res_bar}</div></div>
