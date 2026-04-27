@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V38.0", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V37.0", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -26,8 +26,8 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V38.0</div>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>CONTROL MAESTRO DESDE EL SIDEBAR</p>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V37.0</div>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>ARQUITECTURA DE INTERRUPTOR GLOBAL</p>", unsafe_allow_html=True)
         with st.form("login_form"):
             u = st.text_input("Operador")
             p = st.text_input("Clave", type="password")
@@ -180,11 +180,15 @@ st.markdown(f"""
     .white-row {{ display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #F1F5F9; font-size: 13px; font-weight: 700; }}
     .white-center {{ text-align: right; font-weight: 900; color: #2563EB; font-size: 14px; flex-grow: 1; }}
     .player-box {{ background: #F8FAFC; padding: 8px 12px; border-radius: 8px; border: 1px solid #E2E8F0; font-size: 11px; text-align: center; margin-top: 15px; font-weight: 700; color: #475569; width: 48%; display: inline-block; }}
+    
+    /* Diseño especial para el Switcher Global */
+    div.row-widget.stRadio > div {{ flex-direction: row; justify-content: center; background: {c_card}; padding: 15px; border-radius: 12px; border: 1px solid {c_acc}; margin-bottom: 20px; }}
+    div.row-widget.stRadio > div > label {{ font-size: 16px !important; font-weight: 900 !important; color: {c_text} !important; padding: 0 20px; }}
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 5. SIDEBAR: EL CENTRO DE MANDO
+# 5. SIDEBAR
 # ==========================================
 st.sidebar.markdown("---")
 st.sidebar.markdown(f"<h2 style='color:{c_acc}; text-align:center;'>🏦 Mi Bankroll</h2>", unsafe_allow_html=True)
@@ -204,28 +208,28 @@ if not df_ops.empty:
             if c_g.button("✅", key=f"w_{idx}"): gestionar_historial(index_update=idx, nuevo_estado="GANADA"); st.rerun()
             if c_p.button("❌", key=f"l_{idx}"): gestionar_historial(index_update=idx, nuevo_estado="PERDIDA"); st.rerun()
 
+# ==========================================
+# 6. RADAR PRINCIPAL Y SWITCH GLOBAL
+# ==========================================
 st.sidebar.markdown("---")
 cat = st.sidebar.radio("Disciplina", ["⚔️ MOBAs", "🔫 Shooters"])
 juegos = {"League of Legends": "lol", "Dota 2": "dota2", "Mobile Legends": "mlbb", "CS:GO 2": "csgo", "Valorant": "valorant"}
 juego_sel = st.sidebar.selectbox("Juego", list(juegos.keys()))
 slug = juegos[juego_sel]
 
-# AQUI ESTÁ EL INTERRUPTOR MAESTRO BLINDADO
-vista_global = "📡 MODO RADAR (Operar)"
-if juego_sel == "League of Legends":
-    st.sidebar.markdown("---")
-    st.sidebar.markdown(f"<h3 style='color:{c_acc};'>🕹️ Modo de Visualización</h3>", unsafe_allow_html=True)
-    vista_global = st.sidebar.radio(
-        "", 
-        ["📡 MODO RADAR (Operar)", "📊 MODO BÓVEDA (Tablas)"]
-    )
-
 if st.sidebar.button("🗑️ Limpiar Caché (Forzar Oracle)", use_container_width=True): st.cache_data.clear(); st.rerun()
 
-# ==========================================
-# 6. RADAR PRINCIPAL
-# ==========================================
 st.markdown(f"<h2 style='color:{c_text}; text-align: center; margin-bottom: 20px;'>📡 Radar Quant: {juego_sel}</h2>", unsafe_allow_html=True)
+
+# EL SWITCH MAESTRO GLOBAL (SOLO PARA LOL)
+vista_global = "📡 MODO RADAR (Operar)"
+if juego_sel == "League of Legends":
+    vista_global = st.radio(
+        "MODO DE VISUALIZACIÓN:", 
+        ["📡 MODO RADAR (Operar)", "📊 MODO BÓVEDA (Tablas Históricas)"], 
+        horizontal=True,
+        label_visibility="collapsed"
+    )
 
 running = call_api_live(slug, "matches/running", "per_page=20")
 upcoming = call_api_live(slug, "matches/upcoming", "per_page=100&sort=begin_at")
@@ -298,9 +302,9 @@ else:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # EL MODO SELECCIONADO DESDE LA BARRA LATERAL
+                # EL MODO SELECCIONADO POR EL SWITCH GLOBAL
                 if vista_global == "📡 MODO RADAR (Operar)":
-                    with st.expander(f"⚙️ Operar Mercado Quant"):
+                    with st.expander(f"⚙️ Panel Quant: {t1['name']} vs {t2['name']}"):
                         mercados = ["-- Seleccione --", "⭐ PARTIDO: Ganador", "🗼 Total Torres", "🐉 Total Dragones", "👾 Total Barones", "⚔️ Total Kills", "⏱️ Duración", "🤝 Ambos Asesinan Dragón", "🩸 Primera Sangre", "⚖️ Handicap"]
                         sel_m = st.selectbox("Mercado", mercados, key=f"m_{i}")
                         clean_m = sel_m.replace("🔥 ", "").replace("❄️🔥 ", "") 
@@ -332,7 +336,7 @@ else:
                                     st.success(f"🔥 Sugerido: {stake:.2f} U"); 
                                     if st.button("REGISTRAR", key=f"reg_{i}"): gestionar_bank(bank_actual - stake); st.rerun()
 
-                elif vista_global == "📊 MODO BÓVEDA (Tablas)":
+                elif vista_global == "📊 MODO BÓVEDA (Tablas Históricas)":
                     st.markdown(f"""
                     <div class="white-board">
                         <div class="league-title">🏆 {league_name}</div>
