@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V44.1", layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V45.0", layout="centered", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -24,8 +24,8 @@ def check_password():
     """, unsafe_allow_html=True)
     
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V44.1</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>ESCUDO LAMBDA ACTIVADO: CERO CRASHES</p>", unsafe_allow_html=True)
+    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V45.0</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>MOTOR DE LECTURA ÚNICA Y BÚSQUEDA INTELIGENTE</p>", unsafe_allow_html=True)
     with st.form("login_form"):
         u = st.text_input("Operador")
         p = st.text_input("Clave", type="password")
@@ -77,7 +77,7 @@ def call_api_live(game_slug, endpoint, params_str=""):
     except: return []
 
 # ==========================================
-# 3. EL NINJA DE DATOS LOCALES (LECTURA ZIP)
+# 3. EL NUEVO CEREBRO (MOTOR QUANT DE LECTURA ÚNICA)
 # ==========================================
 @st.cache_data(ttl=21600, show_spinner=False)
 def fetch_historical_data_general(game_slug, team_id):
@@ -96,42 +96,65 @@ def get_fallback_stats(team_id):
     wr, form = fetch_historical_data_general("lol", team_id)
     return wr, form, 0, 0, 0, 0, 0, 0 
 
+# ⚡ FUNCIÓN DE LECTURA ÚNICA (Solo lee 1 vez y guarda en RAM)
 @st.cache_data(ttl=28800, show_spinner=False)
-def fetch_oracle_elixir_data(team_name, team_id):
+def load_oracle_database():
+    columnas_clave = ['teamname', 'position', 'date', 'result', 'teamkills', 'towers', 'dragons', 'barons', 'firstblood', 'gamelength']
     try:
-        archivo_local = "datos_oracle.zip" 
-        columnas_clave = ['teamname', 'position', 'date', 'result', 'teamkills', 'towers', 'dragons', 'barons', 'firstblood', 'gamelength']
-        
-        df_team = pd.DataFrame()
-        short_name = team_name.split()[0] if len(team_name.split()) > 0 else team_name
-        
-        # ESCUDO LAMBDA RE-ACTIVADO PARA PREVENIR CRASHES DE COLUMNAS
-        for chunk in pd.read_csv(archivo_local, compression='zip', chunksize=5000, usecols=lambda c: c in columnas_clave, low_memory=False):
-            filtrado = chunk[(chunk['teamname'].str.contains(short_name, case=False, na=False)) & (chunk['position'] == 'team')]
-            df_team = pd.concat([df_team, filtrado])
-            if len(df_team) >= 10: break
-                
-        if not df_team.empty:
-            df_team['date'] = pd.to_datetime(df_team['date'], errors='coerce')
-            df_team = df_team.sort_values(by='date', ascending=False).head(10)
-            
-            wins = df_team['result'].sum() 
-            winrate = wins / len(df_team) if len(df_team) > 0 else 0.50
-            form = ['win' if r == 1 else 'loss' for r in df_team['result'].tolist()[:5]]
-            
-            cols = df_team.columns
-            avg_kills = df_team['teamkills'].mean() if 'teamkills' in cols else 0
-            avg_towers = df_team['towers'].mean() if 'towers' in cols else 0
-            avg_dragons = df_team['dragons'].mean() if 'dragons' in cols else 0
-            avg_barons = df_team['barons'].mean() if 'barons' in cols else 0
-            avg_fb = df_team['firstblood'].mean() if 'firstblood' in cols else 0
-            avg_time = (df_team['gamelength'].mean() / 60) if 'gamelength' in cols else 0
-            
-            return winrate, form, avg_kills, avg_towers, avg_dragons, avg_barons, avg_fb, avg_time
+        if os.path.exists("datos_oracle.zip"):
+            return pd.read_csv("datos_oracle.zip", compression='zip', usecols=lambda c: c in columnas_clave, low_memory=False)
+        elif os.path.exists("datos_oracle.csv"):
+            return pd.read_csv("datos_oracle.csv", usecols=lambda c: c in columnas_clave, low_memory=False)
         else:
-            return get_fallback_stats(team_id)
-    except:
+            url = f"https://oracleselixir-downloadable-match-data.s3-us-west-2.amazonaws.com/{datetime.utcnow().year}_LoL_esports_match_data_from_OraclesElixir.csv"
+            return pd.read_csv(url, usecols=lambda c: c in columnas_clave, low_memory=False)
+    except Exception as e:
+        return pd.DataFrame()
+
+# ⚡ BÚSQUEDA INTELIGENTE EN MEMORIA (No crashea, no colapsa)
+@st.cache_data(ttl=21600, show_spinner=False)
+def get_team_stats(team_name, team_id):
+    df_completo = load_oracle_database()
+    if df_completo.empty: return get_fallback_stats(team_id)
+    
+    # 1. Filtro de búsqueda "Fuzzy" (Eliminar basura del nombre)
+    ignorar = ['team', 'esports', 'challengers', 'academy', 'gaming', 'club', 'hanjin', 'dplus', 'sports', 'lol']
+    palabras = [w for w in team_name.split() if w.lower() not in ignorar]
+    
+    df_team = pd.DataFrame()
+    
+    # 2. Buscar por palabras clave en la Base de Datos RAM
+    for w in palabras:
+        df_team = df_completo[(df_completo['teamname'].str.contains(w, case=False, na=False)) & (df_completo['position'] == 'team')]
+        if not df_team.empty: break
+            
+    if df_team.empty:
+        # Último recurso, primera palabra
+        w0 = team_name.split()[0]
+        df_team = df_completo[(df_completo['teamname'].str.contains(w0, case=False, na=False)) & (df_completo['position'] == 'team')]
+
+    if df_team.empty:
         return get_fallback_stats(team_id)
+
+    # 3. Procesar resultados reales
+    df_team['date'] = pd.to_datetime(df_team['date'], errors='coerce')
+    df_team = df_team.sort_values(by='date', ascending=False).head(10)
+    
+    if df_team.empty: return get_fallback_stats(team_id)
+    
+    wins = df_team['result'].sum() 
+    winrate = wins / len(df_team) if len(df_team) > 0 else 0.50
+    form = ['win' if r == 1 else 'loss' for r in df_team['result'].tolist()[:5]]
+    
+    cols = df_team.columns
+    avg_kills = df_team['teamkills'].mean() if 'teamkills' in cols else 0
+    avg_towers = df_team['towers'].mean() if 'towers' in cols else 0
+    avg_dragons = df_team['dragons'].mean() if 'dragons' in cols else 0
+    avg_barons = df_team['barons'].mean() if 'barons' in cols else 0
+    avg_fb = df_team['firstblood'].mean() if 'firstblood' in cols else 0
+    avg_time = (df_team['gamelength'].mean() / 60) if 'gamelength' in cols else 0
+    
+    return winrate, form, avg_kills, avg_towers, avg_dragons, avg_barons, avg_fb, avg_time
 
 def motor_moba(wr1, wr2, mercado, opcion, linea, t1_name):
     total_wr = wr1 + wr2 if (wr1+wr2)>0 else 1
@@ -170,8 +193,8 @@ c_bg, c_card, c_text, c_acc, c_border, c_btn, c_sub = colors[tema]
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {c_bg}; color: {c_text}; font-family: 'Inter', sans-serif; transition: background-color 0.3s; }}
-    [data-testid="stSidebar"] {{ background-color: {c_card} !important; border-right: 1px solid {c_border}; }}
-    .glass-card {{ background: {c_card}; border: 1px solid {c_border}; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; }}
+    [data-testid="stSidebar"] {{ background-color: {c_card} !important; border-right: 1px solid {c_border}; transition: background-color 0.3s; }}
+    .glass-card {{ background: {c_card}; border: 1px solid {c_border}; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; transition: 0.3s; }}
     .team-logo {{ width: 70px; height: 70px; object-fit: contain; margin-bottom: 5px; }}
     .winrate-text {{ font-size: 14px; color: {c_acc}; font-weight: 900; background: {c_btn}; padding: 4px 10px; border-radius: 10px; display: inline-block; }}
     .tower-plate {{ width: 14px; height: 8px; border-radius: 2px; display: inline-block; margin:0 2px; }}
@@ -181,7 +204,7 @@ st.markdown(f"""
     .badge-live {{ background: #EF4444; color: white; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; animation: pulse 2s infinite; }}
     .badge-time {{ background: {c_acc}; color: {c_bg}; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }}
     .stream-btn {{ background-color: #9146FF; color: white !important; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; display: block; margin-top: 20px; text-align: center; }}
-    div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; border-radius: 8px; padding: 10px; width: 100%; }}
+    div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; border-radius: 8px; padding: 10px; width: 100%; transition: 0.3s; }}
     
     .boveda-board {{ background-color: {c_card}; color: {c_text}; border: 2px solid {c_border}; border-radius: 14px; padding: 25px; margin-bottom: 25px; transition: 0.3s; }}
     .league-title {{ text-align: center; font-weight: 900; font-size: 24px; margin-bottom: 25px; border-bottom: 2px solid {c_border}; padding-bottom: 15px; }}
@@ -226,7 +249,7 @@ juegos = {"League of Legends": "lol", "Dota 2": "dota2", "Mobile Legends": "mlbb
 juego_sel = st.sidebar.selectbox("Juego", list(juegos.keys()))
 slug = juegos[juego_sel]
 
-if st.sidebar.button("🗑️ Limpiar Caché (Forzar ZIP)", use_container_width=True): st.cache_data.clear(); st.rerun()
+if st.sidebar.button("🗑️ Limpiar Caché (Forzar Base Datos)", use_container_width=True): st.cache_data.clear(); st.rerun()
 
 # ==========================================
 # 6. RADAR PRINCIPAL
@@ -273,8 +296,9 @@ else:
         league_name = m['league']['name']
 
         if juego_sel == "League of Legends":
-            wr1, form1, k1, tow1, drg1, bar1, fb1, time1 = fetch_oracle_elixir_data(t1['name'], t1['id']) 
-            wr2, form2, k2, tow2, drg2, bar2, fb2, time2 = fetch_oracle_elixir_data(t2['name'], t2['id']) 
+            # RECOLECTA 8 VARIABLES REALES
+            wr1, form1, k1, tow1, drg1, bar1, fb1, time1 = get_team_stats(t1['name'], t1['id']) 
+            wr2, form2, k2, tow2, drg2, bar2, fb2, time2 = get_team_stats(t2['name'], t2['id']) 
             
             p_gan_max = max(wr1, wr2) / (wr1+wr2 if (wr1+wr2)>0 else 1)
             eq_gan = t1['name'] if wr1 >= wr2 else t2['name']
@@ -282,7 +306,7 @@ else:
             has_data = (k1 > 0 and k2 > 0)
             
             if has_data:
-                p_fb_real = fb1 / (fb1 + fb2 if (fb1+fb2)>0 else 1)
+                p_fb_real = max(0.05, min(0.95, fb1 / (fb1 + fb2 if (fb1+fb2)>0 else 1)))
                 eq_fb = t1['name'] if fb1 >= fb2 else t2['name']
                 
                 exp_k, exp_tow, exp_drg, exp_bar, exp_time = (k1+k2), (tow1+tow2), (drg1+drg2), (bar1+bar2), (time1+time2)/2
@@ -305,7 +329,7 @@ else:
                 res_kil = f'<span class="w-pred">{op_kills} ({p_kills*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_kills:.2f}</span>'
                 res_tim = f'<span class="w-pred">{op_tiempo} ({p_tiempo*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_tiempo:.2f}</span>'
             else:
-                sd_html = f'<span style="color:{c_sub}; font-weight:bold;">S/D</span>'
+                sd_html = f'<span style="color:{c_sub}; font-weight:bold;">S/D (Faltan Datos Locales)</span>'
                 res_fb = res_tow = res_drg = res_bar = res_kil = res_tim = sd_html
                 k1 = k2 = tow1 = tow2 = drg1 = drg2 = bar1 = bar2 = time1 = time2 = "S/D"
 
