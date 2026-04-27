@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V40.0", layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V41.0", layout="centered", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -24,8 +24,8 @@ def check_password():
     """, unsafe_allow_html=True)
     
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V40.0</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>BÓVEDA PREMIUM: CARA A CARA INDIVIDUAL</p>", unsafe_allow_html=True)
+    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V41.0</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>UI CAMALEÓN: BÓVEDA ADAPTABLE Y TEMA BLANCO</p>", unsafe_allow_html=True)
     with st.form("login_form"):
         u = st.text_input("Operador")
         p = st.text_input("Clave", type="password")
@@ -77,7 +77,7 @@ def call_api_live(game_slug, endpoint, params_str=""):
     except: return []
 
 # ==========================================
-# 3. EL NINJA DE ORACLE ELIXIR (ACTUALIZADO CON BARONES)
+# 3. EL NINJA DE ORACLE ELIXIR
 # ==========================================
 @st.cache_data(ttl=28800, show_spinner=False)
 def fetch_oracle_elixir_data(team_name):
@@ -148,46 +148,52 @@ def motor_fps(wr1, wr2, mercado, opcion, linea, t1_name):
     return max(0.05, min(0.95, prob))
 
 # ==========================================
-# 4. TEMAS Y CSS 
+# 4. TEMAS Y CSS (SISTEMA DE PALETAS DINÁMICO)
 # ==========================================
 st.sidebar.markdown("### 🎨 Apariencia")
-tema = st.sidebar.selectbox("", ["Azul Oscuro (Defecto)", "Verde Hacker", "Rojo Táctico"])
-colors = {"Azul Oscuro (Defecto)": ("#0B1120", "#1E293B", "#F1F5F9", "#38BDF8"), "Verde Hacker": ("#000000", "#051A05", "#4ADE80", "#10B981"), "Rojo Táctico": ("#0A0000", "#1A0505", "#FECACA", "#EF4444")}
-c_bg, c_card, c_text, c_acc = colors[tema]
-c_sub, c_border, c_btn = "#94A3B8", "#334155", "#0F172A"
+tema = st.sidebar.selectbox("", ["Azul Oscuro (Defecto)", "Verde Hacker", "Rojo Táctico", "Blanco Cuántico"])
+
+# Diccionario de Temas: (Fondo, Tarjeta, Texto, Acento, Borde, Botones/Cajas)
+colors = {
+    "Azul Oscuro (Defecto)": ("#0B1120", "#1E293B", "#F1F5F9", "#38BDF8", "#334155", "#0F172A"),
+    "Verde Hacker": ("#000000", "#051A05", "#4ADE80", "#10B981", "#064E3B", "#022C22"),
+    "Rojo Táctico": ("#0A0000", "#1A0505", "#FECACA", "#EF4444", "#7F1D1D", "#450A0A"),
+    "Blanco Cuántico": ("#F1F5F9", "#FFFFFF", "#0F172A", "#2563EB", "#CBD5E1", "#F8FAFC")
+}
+c_bg, c_card, c_text, c_acc, c_border, c_btn = colors[tema]
 
 st.markdown(f"""
     <style>
-    .stApp {{ background-color: {c_bg}; color: {c_text}; font-family: 'Inter', sans-serif; }}
-    [data-testid="stSidebar"] {{ background-color: {c_card} !important; border-right: 1px solid {c_border}; }}
-    .glass-card {{ background: {c_card}; border: 1px solid {c_border}; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: relative; }}
+    .stApp {{ background-color: {c_bg}; color: {c_text}; font-family: 'Inter', sans-serif; transition: background-color 0.3s; }}
+    [data-testid="stSidebar"] {{ background-color: {c_card} !important; border-right: 1px solid {c_border}; transition: background-color 0.3s; }}
+    .glass-card {{ background: {c_card}; border: 1px solid {c_border}; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; transition: 0.3s; }}
     .team-logo {{ width: 70px; height: 70px; object-fit: contain; margin-bottom: 5px; }}
     .team-logo-small {{ width: 45px; height: 45px; object-fit: contain; margin-bottom: 5px; }}
     .winrate-text {{ font-size: 14px; color: {c_acc}; font-weight: 900; margin-bottom: 5px; background: {c_btn}; padding: 4px 10px; border-radius: 10px; display: inline-block; }}
     .tower-plate {{ width: 14px; height: 8px; border-radius: 2px; display: inline-block; margin:0 2px; }}
-    .win {{ background-color: #10B981; }} .loss {{ background-color: #EF4444; }} .unknown {{ background-color: #475569; }}
+    .win {{ background-color: #10B981; }} .loss {{ background-color: #EF4444; }} .unknown {{ background-color: {c_border}; }}
     .prob-box {{ background: {c_btn}; padding: 15px; border-radius: 8px; border: 1px solid {c_acc}; text-align: center; margin-bottom: 15px; margin-top: 10px; }}
     .prob-number {{ font-size: 32px; font-weight: 900; color: {c_acc}; }}
     .badge-live {{ background: #EF4444; color: white; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; animation: pulse 2s infinite; }}
     .badge-time {{ background: {c_acc}; color: {c_bg}; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }}
     .stream-btn {{ background-color: #9146FF; color: white !important; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; display: block; margin-top: 20px; text-align: center; }}
-    div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; border-radius: 8px; padding: 10px; width: 100%; }}
+    div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; border-radius: 8px; padding: 10px; width: 100%; transition: 0.3s; }}
     
-    /* CSS BÓVEDA V40.0: DISEÑO PREMIUM Y MULTILINEA */
-    .white-board {{ background-color: #FFFFFF; color: #0F172A; border: 2px solid #CBD5E1; border-radius: 14px; padding: 25px; font-family: 'Inter', sans-serif; box-shadow: 0 8px 16px rgba(0,0,0,0.08); margin-top: 10px; margin-bottom: 25px; }}
-    .league-title {{ text-align: center; font-weight: 900; font-size: 24px; margin-bottom: 25px; color: #0F172A; letter-spacing: 1px; text-transform: uppercase; border-bottom: 2px solid #E2E8F0; padding-bottom: 15px; }}
-    .white-row {{ display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid #F1F5F9; }}
-    .w-col-1 {{ width: 28%; font-size: 13px; font-weight: 800; color: #334155; }}
-    .w-col-2 {{ width: 42%; text-align: center; background: #F8FAFC; border-radius: 6px; padding: 6px; border: 1px solid #E2E8F0; font-size: 12px; color: #475569; font-weight: 600; line-height: 1.4; }}
+    /* CSS BÓVEDA V41.0: EL CAMALEÓN CUÁNTICO (Adaptable al Tema) */
+    .boveda-board {{ background-color: {c_card}; color: {c_text}; border: 2px solid {c_border}; border-radius: 14px; padding: 25px; font-family: 'Inter', sans-serif; box-shadow: 0 8px 16px rgba(0,0,0,0.08); margin-top: 10px; margin-bottom: 25px; transition: 0.3s; }}
+    .league-title {{ text-align: center; font-weight: 900; font-size: 24px; margin-bottom: 25px; color: {c_text}; letter-spacing: 1px; text-transform: uppercase; border-bottom: 2px solid {c_border}; padding-bottom: 15px; }}
+    .boveda-row {{ display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid {c_border}; }}
+    .w-col-1 {{ width: 28%; font-size: 13px; font-weight: 800; color: {c_text}; }}
+    .w-col-2 {{ width: 42%; text-align: center; background: {c_btn}; border-radius: 6px; padding: 6px; border: 1px solid {c_border}; font-size: 12px; color: {c_text}; font-weight: 600; line-height: 1.4; }}
     .w-col-3 {{ width: 30%; text-align: right; line-height: 1.5; }}
-    .w-pred {{ font-weight: 900; color: #2563EB; font-size: 14px; }}
-    .w-cota {{ font-weight: 800; color: #EF4444; font-size: 12px; background: #FEF2F2; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; }}
-    .player-box {{ background: #F8FAFC; padding: 12px 15px; border-radius: 10px; border: 1px solid #E2E8F0; font-size: 12px; text-align: center; margin-top: 25px; font-weight: 700; color: #475569; width: 48%; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }}
+    .w-pred {{ font-weight: 900; color: {c_acc}; font-size: 14px; }}
+    .w-cota {{ font-weight: 800; color: #EF4444; font-size: 12px; background: {c_btn}; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; border: 1px solid {c_border}; }}
+    .player-box {{ background: {c_btn}; padding: 12px 15px; border-radius: 10px; border: 1px solid {c_border}; font-size: 12px; text-align: center; margin-top: 25px; font-weight: 700; color: {c_text}; width: 48%; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }}
     
     /* Diseño especial para el Switcher Frontal */
     div.row-widget.stRadio > div {{ flex-direction: row; justify-content: center; background: transparent; padding: 5px; }}
-    div.row-widget.stRadio > div > label {{ font-size: 15px !important; font-weight: 900 !important; color: {c_text} !important; padding: 10px 20px; background: {c_card}; border-radius: 8px; border: 1px solid {c_acc}; cursor: pointer; margin: 0 10px; transition: 0.3s; }}
-    div.row-widget.stRadio > div > label:hover {{ border-color: #10B981; }}
+    div.row-widget.stRadio > div > label {{ font-size: 15px !important; font-weight: 900 !important; color: {c_text} !important; padding: 10px 20px; background: {c_card}; border-radius: 8px; border: 1px solid {c_border}; cursor: pointer; margin: 0 10px; transition: 0.3s; }}
+    div.row-widget.stRadio > div > label:hover {{ border-color: {c_acc}; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -206,7 +212,7 @@ if not df_ops.empty:
     for idx, row in df_ops.iloc[::-1].iterrows():
         est = row['Estado']
         color = "#10B981" if est == "GANADA" else "#EF4444" if est == "PERDIDA" else "#334155"
-        st.sidebar.markdown(f'<div style="border-left:4px solid {color}; background:#1E293B; padding:8px; border-radius:5px; margin-bottom:5px; font-size:11px;"><b>{row["Partido"]}</b><br>{row["Mercado"][:20]}... ({est})</div>', unsafe_allow_html=True)
+        st.sidebar.markdown(f'<div style="border-left:4px solid {color}; background:{c_btn}; padding:8px; border-radius:5px; margin-bottom:5px; font-size:11px; color:{c_text};"><b>{row["Partido"]}</b><br>{row["Mercado"][:20]}... ({est})</div>', unsafe_allow_html=True)
         if est == "PENDIENTE":
             c_g, c_p = st.sidebar.columns(2)
             if c_g.button("✅", key=f"w_{idx}"): gestionar_historial(index_update=idx, nuevo_estado="GANADA"); st.rerun()
@@ -234,7 +240,7 @@ if juego_sel == "League of Legends":
         horizontal=True,
         label_visibility="collapsed"
     )
-    st.markdown("<hr style='border:1px solid #334155; margin-top: 15px; margin-bottom: 25px;'>", unsafe_allow_html=True)
+    st.markdown(f"<hr style='border:1px solid {c_border}; margin-top: 15px; margin-bottom: 25px;'>", unsafe_allow_html=True)
 
 running = call_api_live(slug, "matches/running", "per_page=20")
 upcoming = call_api_live(slug, "matches/upcoming", "per_page=100&sort=begin_at")
@@ -279,7 +285,6 @@ else:
             p_gan_max = max(wr1, wr2) / (wr1+wr2 if (wr1+wr2)>0 else 1)
             eq_gan = t1['name'] if wr1 >= wr2 else t2['name']
             
-            # MATEMÁTICA CORREGIDA PARA PRIMERA SANGRE
             p_fb = 0.50 + ((p_gan_max - 0.50) * 0.7)
             
             p_k_mas = max(0.05, min(0.95, 0.50 + (exp_k - 28.5) * 0.03))
@@ -298,7 +303,7 @@ else:
             n1 = t1['name'][:10]
             n2 = t2['name'][:10]
             
-            # LA TARJETA PRINCIPAL
+            # LA TARJETA PRINCIPAL (Camaleónica)
             st.markdown(f"""
             <div class="glass-card">
                 <div style="margin-bottom: 15px; font-size: 13px; display: flex; justify-content: space-between;"><span>🏆 {league_name}</span>{badge}</div>
@@ -344,73 +349,64 @@ else:
                                 if st.button("REGISTRAR", key=f"reg_{i}"): gestionar_bank(bank_actual - stake); st.rerun()
 
             elif vista_global == "📊 MODO BÓVEDA (Tablas Premium)":
-                # HTML V40.0: DISEÑO DE 3 COLUMNAS MULTILÍNEA
+                # HTML V41.0: CAMALEÓN (Toma los colores de CSS definidos arriba)
                 html_boveda = f"""
-                <div class="white-board">
-                    <div class="league-title">🏆 {league_name}</div>
-                    
-                    <div style="display: flex; justify-content: space-around; align-items: center; margin-bottom: 25px;">
-                        <div style="text-align: center; width: 30%;">
-                            <img src="{t1.get('image_url','')}" class="team-logo-small"><br>
-                            <b style="color:#0F172A;">{t1['name']}</b>
-                        </div>
-                        <div style="font-weight: 900; color: #94A3B8; font-size: 13px; text-align: center; width: 40%;">
-                            ⚡ PROMEDIOS CARA A CARA<br>VS PREDICCIÓN FINAL
-                        </div>
-                        <div style="text-align: center; width: 30%;">
-                            <img src="{t2.get('image_url','')}" class="team-logo-small"><br>
-                            <b style="color:#0F172A;">{t2['name']}</b>
-                        </div>
-                    </div>
-
-                    <div class="white-row">
-                        <div class="w-col-1">⭐ GANADOR</div> 
-                        <div class="w-col-2">{n1}: <b>{wr1*100:.0f}%</b><br>{n2}: <b>{wr2*100:.0f}%</b></div>
-                        <div class="w-col-3"><span class="w-pred">{eq_gan} ({p_gan_max*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_gan_max:.2f}</span></div>
-                    </div>
-                    
-                    <div class="white-row">
-                        <div class="w-col-1">🩸 1RA SANGRE</div> 
-                        <div class="w-col-2">Ventaja por Momentum<br>Mecánica H2H</div>
-                        <div class="w-col-3"><span class="w-pred">{eq_gan} ({p_fb*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_fb:.2f}</span></div>
-                    </div>
-
-                    <div class="white-row">
-                        <div class="w-col-1">🗼 TORRES (12.5)</div> 
-                        <div class="w-col-2">{n1}: <b>{tow1:.1f}</b><br>{n2}: <b>{tow2:.1f}</b></div>
-                        <div class="w-col-3"><span class="w-pred">{op_torres} ({p_torres*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_torres:.2f}</span></div>
-                    </div>
-
-                    <div class="white-row">
-                        <div class="w-col-1">🐉 DRAGONES (4.5)</div> 
-                        <div class="w-col-2">{n1}: <b>{drg1:.1f}</b><br>{n2}: <b>{drg2:.1f}</b></div>
-                        <div class="w-col-3"><span class="w-pred">{op_drag} ({p_drag*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_drag:.2f}</span></div>
-                    </div>
-
-                    <div class="white-row">
-                        <div class="w-col-1">👾 BARONES (1.5)</div> 
-                        <div class="w-col-2">{n1}: <b>{bar1:.1f}</b><br>{n2}: <b>{bar2:.1f}</b></div>
-                        <div class="w-col-3"><span class="w-pred">{op_bar} ({p_bar*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_bar:.2f}</span></div>
-                    </div>
-
-                    <div class="white-row">
-                        <div class="w-col-1">⚔️ TOTAL KILLS (28.5)</div> 
-                        <div class="w-col-2">{n1}: <b>{k1:.1f}</b><br>{n2}: <b>{k2:.1f}</b></div>
-                        <div class="w-col-3"><span class="w-pred">{op_kills} ({p_kills*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_kills:.2f}</span></div>
-                    </div>
-
-                    <div class="white-row" style="border-bottom: none;">
-                        <div class="w-col-1">⏱️ TIEMPO P. (32.5)</div> 
-                        <div class="w-col-2">{n1}: <b>{time1:.1f}m</b><br>{n2}: <b>{time2:.1f}m</b></div>
-                        <div class="w-col-3"><span class="w-pred">{op_tiempo} ({p_tiempo*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_tiempo:.2f}</span></div>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between;">
-                        <div class="player-box">⭐ MVP Simul: Capitán<br>KDA: 4.8 | Main: Azir</div>
-                        <div class="player-box">⭐ MVP Simul: Capitán<br>KDA: 5.1 | Main: Lee Sin</div>
-                    </div>
-                </div>
-                """
+<div class="boveda-board">
+    <div class="league-title">🏆 {league_name}</div>
+    <div style="display: flex; justify-content: space-around; align-items: center; margin-bottom: 25px;">
+        <div style="text-align: center; width: 30%;">
+            <img src="{t1.get('image_url','')}" class="team-logo-small"><br>
+            <b>{t1['name']}</b>
+        </div>
+        <div style="font-weight: 900; color: {c_acc}; font-size: 13px; text-align: center; width: 40%;">
+            ⚡ PROMEDIOS CARA A CARA<br>VS PREDICCIÓN FINAL
+        </div>
+        <div style="text-align: center; width: 30%;">
+            <img src="{t2.get('image_url','')}" class="team-logo-small"><br>
+            <b>{t2['name']}</b>
+        </div>
+    </div>
+    <div class="boveda-row">
+        <div class="w-col-1">⭐ GANADOR</div> 
+        <div class="w-col-2">{n1}: <b>{wr1*100:.0f}%</b><br>{n2}: <b>{wr2*100:.0f}%</b></div>
+        <div class="w-col-3"><span class="w-pred">{eq_gan} ({p_gan_max*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_gan_max:.2f}</span></div>
+    </div>
+    <div class="boveda-row">
+        <div class="w-col-1">🩸 1RA SANGRE</div> 
+        <div class="w-col-2">Ventaja por Momentum<br>Mecánica H2H</div>
+        <div class="w-col-3"><span class="w-pred">{eq_gan} ({p_fb*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_fb:.2f}</span></div>
+    </div>
+    <div class="boveda-row">
+        <div class="w-col-1">🗼 TORRES (12.5)</div> 
+        <div class="w-col-2">{n1}: <b>{tow1:.1f}</b><br>{n2}: <b>{tow2:.1f}</b></div>
+        <div class="w-col-3"><span class="w-pred">{op_torres} ({p_torres*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_torres:.2f}</span></div>
+    </div>
+    <div class="boveda-row">
+        <div class="w-col-1">🐉 DRAGONES (4.5)</div> 
+        <div class="w-col-2">{n1}: <b>{drg1:.1f}</b><br>{n2}: <b>{drg2:.1f}</b></div>
+        <div class="w-col-3"><span class="w-pred">{op_drag} ({p_drag*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_drag:.2f}</span></div>
+    </div>
+    <div class="boveda-row">
+        <div class="w-col-1">👾 BARONES (1.5)</div> 
+        <div class="w-col-2">{n1}: <b>{bar1:.1f}</b><br>{n2}: <b>{bar2:.1f}</b></div>
+        <div class="w-col-3"><span class="w-pred">{op_bar} ({p_bar*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_bar:.2f}</span></div>
+    </div>
+    <div class="boveda-row">
+        <div class="w-col-1">⚔️ TOTAL KILLS (28.5)</div> 
+        <div class="w-col-2">{n1}: <b>{k1:.1f}</b><br>{n2}: <b>{k2:.1f}</b></div>
+        <div class="w-col-3"><span class="w-pred">{op_kills} ({p_kills*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_kills:.2f}</span></div>
+    </div>
+    <div class="boveda-row" style="border-bottom: none;">
+        <div class="w-col-1">⏱️ TIEMPO P. (32.5)</div> 
+        <div class="w-col-2">{n1}: <b>{time1:.1f}m</b><br>{n2}: <b>{time2:.1f}m</b></div>
+        <div class="w-col-3"><span class="w-pred">{op_tiempo} ({p_tiempo*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_tiempo:.2f}</span></div>
+    </div>
+    <div style="display: flex; justify-content: space-between;">
+        <div class="player-box">⭐ MVP Simul: Capitán<br>KDA: 4.8 | Main: Azir</div>
+        <div class="player-box">⭐ MVP Simul: Capitán<br>KDA: 5.1 | Main: Lee Sin</div>
+    </div>
+</div>
+"""
                 st.markdown(html_boveda, unsafe_allow_html=True)
 
         else:
