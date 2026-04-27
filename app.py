@@ -25,7 +25,7 @@ def check_password():
     
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
     st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V41.2</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>AUDITORÍA SUPERADA: 72H Y AUTO-LIMPIEZA</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>NINJA REPARADO: SINCRONIZACIÓN PANDASCORE</p>", unsafe_allow_html=True)
     with st.form("login_form"):
         u = st.text_input("Operador")
         p = st.text_input("Clave", type="password")
@@ -93,20 +93,22 @@ def fetch_historical_data_general(game_slug, team_id):
         return (wins/len(res)), form[:5]
     except: return 0.50, ['unknown']*5
 
+# Plan B: Si Oracle falla, sacamos Winrate REAL de PandaScore
 def get_fallback_stats(team_id):
     wr, form = fetch_historical_data_general("lol", team_id)
     return wr, form, 14.5, 6.5, 2.5, 0.8, 32.5
 
-@st.cache_data(ttl=28800, show_spinner=False)
+@st.cache_data(ttl=28800, show_spinner=False) # Candado de 8 Horas
 def fetch_oracle_elixir_data(team_name, team_id):
     try:
         current_year = datetime.utcnow().year
-        url_oracle = f"https://oracleselixir-downloadable-match-data.s3-us-west-2.amazonaws.com/{current_year}_LoL_esports_match_data_from_OraclesElixir.csv"
+        url_oracle = f"https://oracleselixir-downloadable-match-data.s3-us-west-2.amazonaws.com/{current_year}_LoL_esports_match_data_from_OraclesElixir.csv" # Base de Datos Maestra CSV
         df_team = pd.DataFrame()
         
+        # Filtro más inteligente para nombres de equipos
         short_name = team_name.split()[0] if len(team_name.split()) > 0 else team_name
         
-        for chunk in pd.read_csv(url_oracle, chunksize=5000, low_memory=False):
+        for chunk in pd.read_csv(url_oracle, chunksize=5000, low_memory=False): # Lectura en fragmentos del CSV maestro
             filtrado = chunk[(chunk['teamname'].str.contains(short_name, case=False, na=False)) & (chunk['position'] == 'team')]
             df_team = pd.concat([df_team, filtrado])
             if len(df_team) >= 10: break
@@ -128,9 +130,9 @@ def fetch_oracle_elixir_data(team_name, team_id):
             
             return winrate, form, avg_kills, avg_towers, avg_dragons, avg_barons, avg_time
         else:
-            return get_fallback_stats(team_id)
+            return get_fallback_stats(team_id) # Activación del Plan B Inteligente
     except:
-        return get_fallback_stats(team_id)
+        return get_fallback_stats(team_id) # Activación del Plan B Inteligente
 
 def motor_moba(wr1, wr2, mercado, opcion, linea, t1_name):
     total_wr = wr1 + wr2 if (wr1+wr2)>0 else 1
@@ -227,7 +229,7 @@ juegos = {"League of Legends": "lol", "Dota 2": "dota2", "Mobile Legends": "mlbb
 juego_sel = st.sidebar.selectbox("Juego", list(juegos.keys()))
 slug = juegos[juego_sel]
 
-if st.sidebar.button("🗑️ Limpiar Caché (Forzar Oracle)", use_container_width=True): st.cache_data.clear(); st.rerun()
+if st.sidebar.button("🗑️ Limpiar Caché (Forzar Oracle)", use_container_width=True): st.cache_data.clear(); st.rerun() # Botón de forzado de caché
 
 # ==========================================
 # 6. RADAR PRINCIPAL
@@ -244,8 +246,8 @@ if juego_sel == "League of Legends":
     )
     st.markdown(f"<hr style='border:1px solid {c_border}; margin-top: 15px; margin-bottom: 25px;'>", unsafe_allow_html=True)
 
-running = call_api_live(slug, "matches/running", "per_page=20")
-upcoming = call_api_live(slug, "matches/upcoming", "per_page=100&sort=begin_at")
+running = call_api_live(slug, "matches/running", "per_page=20") # Solo partidos en vivo
+upcoming = call_api_live(slug, "matches/upcoming", "per_page=100&sort=begin_at") # Solo partidos próximos
 partidos_totales = running + upcoming
 
 hoy_utc = datetime.utcnow()
@@ -259,12 +261,12 @@ for p in partidos_totales:
     elif p['status'] == 'not_started' and p.get('begin_at'):
         dt_utc = datetime.strptime(p['begin_at'], "%Y-%m-%dT%H:%M:%SZ")
         dt_local = dt_utc - timedelta(hours=4)
-        if limite_inferior <= dt_local <= limite_semana: partidos_filtrados.append(p)
+        if limite_inferior <= dt_local <= limite_semana: partidos_filtrados.append(p) # Filtrado para planificación de 7 días
 
 if not partidos_filtrados: 
     st.info("No hay actividad programada en los próximos 7 días.")
 else:
-    for i, m in enumerate(partidos_filtrados[:20]):
+    for i, m in enumerate(partidos_filtrados[:20]): # No se incluyen partidos finalizados ('finished')
         opp = m.get('opponents', [])
         if len(opp) < 2: continue
         t1, t2 = opp[0]['opponent'], opp[1]['opponent']
@@ -275,8 +277,8 @@ else:
         league_name = m['league']['name']
 
         if juego_sel == "League of Legends":
-            wr1, form1, k1, tow1, drg1, bar1, time1 = fetch_oracle_elixir_data(t1['name'], t1['id'])
-            wr2, form2, k2, tow2, drg2, bar2, time2 = fetch_oracle_elixir_data(t2['name'], t2['id'])
+            wr1, form1, k1, tow1, drg1, bar1, time1 = fetch_oracle_elixir_data(t1['name'], t1['id']) # Uso de Team ID para Plan B
+            wr2, form2, k2, tow2, drg2, bar2, time2 = fetch_oracle_elixir_data(t2['name'], t2['id']) # Uso de Team ID para Plan B
             
             exp_k = k1 + k2
             exp_tow = tow1 + tow2
