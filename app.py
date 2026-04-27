@@ -8,7 +8,8 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V39.0", layout="centered", initial_sidebar_state="expanded")
+# Mantenemos "centered" para que tu columna de línea de tiempo se vea perfecta
+st.set_page_config(page_title="Quant Elite V39.1", layout="centered", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -24,8 +25,8 @@ def check_password():
     """, unsafe_allow_html=True)
     
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V39.0</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>TIMELINE DE 1 COLUMNA</p>", unsafe_allow_html=True)
+    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V39.1</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>CONTROL FRONTAL Y TIMELINE DE 1 COLUMNA</p>", unsafe_allow_html=True)
     with st.form("login_form"):
         u = st.text_input("Operador")
         p = st.text_input("Clave", type="password")
@@ -172,21 +173,21 @@ st.markdown(f"""
     .stream-btn {{ background-color: #9146FF; color: white !important; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; display: block; margin-top: 20px; text-align: center; }}
     div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; border-radius: 8px; padding: 10px; width: 100%; }}
     
-    /* CSS EXCLUSIVO TABLA BLANCA - CONDENSADO PARA EVITAR BUGS DE STREAMLIT */
+    /* CSS EXCLUSIVO TABLA BLANCA */
     .white-board {{ background-color: #FFFFFF; color: #1E293B; border: 2px solid #CBD5E1; border-radius: 12px; padding: 25px; font-family: 'Inter', sans-serif; box-shadow: 0 4px 10px rgba(0,0,0,0.15); margin-top: 10px; margin-bottom: 25px; }}
     .league-title {{ text-align: center; font-weight: 900; font-size: 24px; margin-bottom: 20px; color: #0F172A; letter-spacing: 1px; text-transform: uppercase; border-bottom: 2px solid #E2E8F0; padding-bottom: 10px; }}
     .white-row {{ display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #F1F5F9; font-size: 14px; font-weight: 700; }}
     .white-center {{ text-align: right; font-weight: 900; color: #2563EB; font-size: 15px; flex-grow: 1; }}
     .player-box {{ background: #F8FAFC; padding: 10px 15px; border-radius: 8px; border: 1px solid #E2E8F0; font-size: 12px; text-align: center; margin-top: 20px; font-weight: 700; color: #475569; width: 48%; display: inline-block; }}
     
-    /* Diseño especial para el Switcher Global */
-    div.row-widget.stRadio > div {{ flex-direction: row; justify-content: center; background: {c_card}; padding: 15px; border-radius: 12px; border: 1px solid {c_acc}; margin-bottom: 20px; }}
-    div.row-widget.stRadio > div > label {{ font-size: 16px !important; font-weight: 900 !important; color: {c_text} !important; padding: 0 20px; }}
+    /* Diseño especial para el Switcher Frontal Gigante */
+    div.row-widget.stRadio > div {{ flex-direction: row; justify-content: center; background: transparent; padding: 5px; }}
+    div.row-widget.stRadio > div > label {{ font-size: 16px !important; font-weight: 900 !important; color: {c_text} !important; padding: 10px 20px; background: {c_card}; border-radius: 8px; border: 1px solid {c_acc}; cursor: pointer; margin: 0 10px; }}
     </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 5. SIDEBAR: EL CENTRO DE MANDO
+# 5. SIDEBAR (Limpiado, solo Bankroll y Auditoría)
 # ==========================================
 st.sidebar.markdown("---")
 st.sidebar.markdown(f"<h2 style='color:{c_acc}; text-align:center;'>🏦 Mi Bankroll</h2>", unsafe_allow_html=True)
@@ -212,22 +213,23 @@ juegos = {"League of Legends": "lol", "Dota 2": "dota2", "Mobile Legends": "mlbb
 juego_sel = st.sidebar.selectbox("Juego", list(juegos.keys()))
 slug = juegos[juego_sel]
 
-# EL INTERRUPTOR MAESTRO BLINDADO
-vista_global = "📡 MODO RADAR (Operar)"
-if juego_sel == "League of Legends":
-    st.sidebar.markdown("---")
-    st.sidebar.markdown(f"<h3 style='color:{c_acc}; text-align:center;'>🕹️ Panel de Control</h3>", unsafe_allow_html=True)
-    vista_global = st.sidebar.radio(
-        "", 
-        ["📡 MODO RADAR (Operar)", "📊 MODO BÓVEDA (Tablas)"]
-    )
-
 if st.sidebar.button("🗑️ Limpiar Caché (Forzar Oracle)", use_container_width=True): st.cache_data.clear(); st.rerun()
 
 # ==========================================
-# 6. RADAR PRINCIPAL (UNA SOLA COLUMNA CRONOLÓGICA)
+# 6. RADAR PRINCIPAL Y EL INTERRUPTOR FRONTAL
 # ==========================================
-st.markdown(f"<h2 style='color:{c_text}; text-align: center; margin-bottom: 25px;'>📡 Radar Quant: {juego_sel}</h2>", unsafe_allow_html=True)
+st.markdown(f"<h2 style='color:{c_text}; text-align: center; margin-bottom: 10px;'>📡 Radar Quant: {juego_sel}</h2>", unsafe_allow_html=True)
+
+# EL BOTÓN GIGANTE EN EL CENTRO DE LA PANTALLA
+vista_global = "📡 MODO RADAR (Operar)"
+if juego_sel == "League of Legends":
+    vista_global = st.radio(
+        "Selección de Panel", 
+        ["📡 MODO RADAR (Operar)", "📊 MODO BÓVEDA (Tablas)"], 
+        horizontal=True,
+        label_visibility="collapsed"
+    )
+    st.markdown("<hr style='border:1px solid #334155; margin-top: 15px; margin-bottom: 25px;'>", unsafe_allow_html=True)
 
 running = call_api_live(slug, "matches/running", "per_page=20")
 upcoming = call_api_live(slug, "matches/upcoming", "per_page=100&sort=begin_at")
@@ -249,7 +251,7 @@ for p in partidos_totales:
 if not partidos_filtrados: 
     st.info("No hay actividad programada en los próximos 7 días.")
 else:
-    # AQUI ELIMINAMOS LAS 2 COLUMNAS. TODO VA EN 1 SOLA LÍNEA DE TIEMPO
+    # 1 SOLA COLUMNA: LÍNEA DE TIEMPO CORRELATIVA
     for i, m in enumerate(partidos_filtrados[:20]):
         opp = m.get('opponents', [])
         if len(opp) < 2: continue
@@ -285,7 +287,7 @@ else:
             p_drag, op_drag = get_tot(p_d_mas)
             p_ambos, op_ambos = (p_ambos_si, "SÍ") if p_ambos_si >= 0.50 else (1 - p_ambos_si, "NO")
             
-            # LA TARJETA PRINCIPAL
+            # LA TARJETA PRINCIPAL (Visualmente ancha en 1 columna)
             st.markdown(f"""
             <div class="glass-card">
                 <div style="margin-bottom: 15px; font-size: 13px; display: flex; justify-content: space-between;"><span>🏆 {league_name}</span>{badge}</div>
@@ -298,7 +300,7 @@ else:
             </div>
             """, unsafe_allow_html=True)
             
-            # EL MODO SELECCIONADO DESDE LA BARRA LATERAL
+            # EL MODO SELECCIONADO POR EL BOTÓN FRONTAL
             if vista_global == "📡 MODO RADAR (Operar)":
                 with st.expander(f"⚙️ Panel Quant: {t1['name']} vs {t2['name']}"):
                     mercados = ["-- Seleccione --", "⭐ PARTIDO: Ganador", "🗼 Total Torres", "🐉 Total Dragones", "👾 Total Barones", "⚔️ Total Kills", "⏱️ Duración", "🤝 Ambos Asesinan Dragón", "🩸 Primera Sangre", "⚖️ Handicap"]
@@ -333,7 +335,7 @@ else:
                                 if st.button("REGISTRAR", key=f"reg_{i}"): gestionar_bank(bank_actual - stake); st.rerun()
 
             elif vista_global == "📊 MODO BÓVEDA (Tablas)":
-                # HTML SELLADO SIN ESPACIOS EN BLANCO PARA EVITAR BUGS DE STREAMLIT
+                # HTML SELLADO (SIN BUG DE TEXTO SUELTO)
                 st.markdown(f"""<div class="white-board"><div class="league-title">🏆 {league_name}</div><div style="display: flex; justify-content: space-around; align-items: center; margin-bottom: 20px;"><div style="text-align: center; width: 30%;"><img src="{t1.get('image_url','')}" class="team-logo-small"><br><b style="color:#0F172A;">{t1['name']}</b><br><span style="color:#2563EB;">WR: {wr1*100:.0f}%</span></div><div style="font-weight: 900; color: #94A3B8; font-size: 14px;">PROMEDIO COMBINADO</div><div style="text-align: center; width: 30%;"><img src="{t2.get('image_url','')}" class="team-logo-small"><br><b style="color:#0F172A;">{t2['name']}</b><br><span style="color:#2563EB;">WR: {wr2*100:.0f}%</span></div></div><div class="white-row"><div>⭐ GANADOR</div> <div class="white-center">{eq_gan} ({p_gan_max*100:.0f}%) | C.Mín: {1/p_gan_max:.2f}</div></div><div class="white-row"><div>🗼 TORRES T.</div> <div class="white-center">{op_torres} 12.5 | Prom: {exp_tow:.1f} ({p_torres*100:.0f}%)</div></div><div class="white-row"><div>🐉 DRAGONES T.</div> <div class="white-center">{op_drag} 4.5 | Prom: {exp_drg:.1f} ({p_drag*100:.0f}%)</div></div><div class="white-row"><div>👾 BARONES T.</div> <div class="white-center">{op_drag} 1.5 | Estim: 1.8 ({p_drag*100:.0f}%)</div></div><div class="white-row"><div>⚔️ TOTAL KILLS</div> <div class="white-center">{op_kills} 28.5 | Prom: {exp_k:.1f} ({p_kills*100:.0f}%)</div></div><div class="white-row"><div>⏱️ TIEMPO P.</div> <div class="white-center">{op_tiempo} 32.5 | Prom: {exp_time:.1f}m ({p_tiempo*100:.0f}%)</div></div><div class="white-row"><div>🩸 1RA SANGRE</div> <div class="white-center">{eq_gan} ({0.5+((p_gan_max-0.5)*0.7)*100:.0f}%)</div></div><div style="display: flex; justify-content: space-between;"><div class="player-box">⭐ MVP Simul: Capitán<br>KDA: 4.8 | Main: Azir</div><div class="player-box">⭐ MVP Simul: Capitán<br>KDA: 5.1 | Main: Lee Sin</div></div></div>""", unsafe_allow_html=True)
 
         else:
