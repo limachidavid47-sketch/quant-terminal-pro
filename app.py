@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V44.0", layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V44.1", layout="centered", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -24,8 +24,8 @@ def check_password():
     """, unsafe_allow_html=True)
     
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V44.0</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>BASE ZIP LOCAL | CONTROL STICKY | DATOS REALES</p>", unsafe_allow_html=True)
+    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V44.1</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>ESCUDO LAMBDA ACTIVADO: CERO CRASHES</p>", unsafe_allow_html=True)
     with st.form("login_form"):
         u = st.text_input("Operador")
         p = st.text_input("Clave", type="password")
@@ -63,7 +63,7 @@ def gestionar_historial(nueva_op=None, index_update=None, nuevo_estado=None):
             gestionar_bank(gestionar_bank() + (df.at[index_update, 'Inversion'] * df.at[index_update, 'Cuota']))
         df.at[index_update, 'Estado'] = nuevo_estado
     df['Fecha'] = pd.to_datetime(df['Fecha'])
-    df = df[df['Fecha'] >= (datetime.utcnow() - timedelta(hours=72))] # 72 horas de historial
+    df = df[df['Fecha'] >= (datetime.utcnow() - timedelta(hours=72))]
     df.to_csv(file_name, index=False)
     return df
 
@@ -94,9 +94,9 @@ def fetch_historical_data_general(game_slug, team_id):
 
 def get_fallback_stats(team_id):
     wr, form = fetch_historical_data_general("lol", team_id)
-    return wr, form, 0, 0, 0, 0, 0, 0 # Todo en 0 para activar S/D
+    return wr, form, 0, 0, 0, 0, 0, 0 
 
-@st.cache_data(ttl=28800, show_spinner=False) # Candado de 8 horas
+@st.cache_data(ttl=28800, show_spinner=False)
 def fetch_oracle_elixir_data(team_name, team_id):
     try:
         archivo_local = "datos_oracle.zip" 
@@ -105,7 +105,7 @@ def fetch_oracle_elixir_data(team_name, team_id):
         df_team = pd.DataFrame()
         short_name = team_name.split()[0] if len(team_name.split()) > 0 else team_name
         
-        # Lectura directa desde ZIP
+        # ESCUDO LAMBDA RE-ACTIVADO PARA PREVENIR CRASHES DE COLUMNAS
         for chunk in pd.read_csv(archivo_local, compression='zip', chunksize=5000, usecols=lambda c: c in columnas_clave, low_memory=False):
             filtrado = chunk[(chunk['teamname'].str.contains(short_name, case=False, na=False)) & (chunk['position'] == 'team')]
             df_team = pd.concat([df_team, filtrado])
@@ -139,10 +139,22 @@ def motor_moba(wr1, wr2, mercado, opcion, linea, t1_name):
     if "Total" in mercado or "Duración" in mercado or "Tiempo" in mercado or "Ambos" in mercado:
         mom = (wr1 + wr2) / 2
         prob = 0.50 + (mom - 0.50) * 0.3 if "Más" in opcion or "SÍ" in opcion else 0.50 - (mom - 0.50) * 0.3
+    elif "Primer" in mercado or "Primera" in mercado:
+        prob = 0.50 + (( (wr1/total_wr if t1_name in opcion else wr2/total_wr) - 0.50) * 0.7)
+    elif "Carrera" in mercado:
+        var = 0.60 if "5" in mercado else 0.75 if "10" in mercado else 0.85
+        prob = 0.50 + (( (wr1/total_wr if t1_name in opcion else wr2/total_wr) - 0.50) * var)
+    return max(0.05, min(0.95, prob))
+
+def motor_fps(wr1, wr2, mercado, opcion, linea, t1_name):
+    total_wr = wr1 + wr2 if (wr1 + wr2) > 0 else 1
+    prob = wr1/total_wr if opcion == t1_name else wr2/total_wr
+    if "Handicap" in mercado: prob = prob - (abs(linea)*0.15) if linea < 0 else prob + (abs(linea)*0.15)
+    elif "Total" in mercado: prob = 0.5 + ((wr1+wr2)/2 - 0.5)*0.4 if "Más" in opcion else 0.5 - ((wr1+wr2)/2 - 0.5)*0.4
     return max(0.05, min(0.95, prob))
 
 # ==========================================
-# 4. TEMAS Y CSS (STICKY PANEL INCLUIDO)
+# 4. TEMAS Y CSS 
 # ==========================================
 st.sidebar.markdown("### 🎨 Apariencia")
 tema = st.sidebar.selectbox("", ["Azul Oscuro (Defecto)", "Verde Hacker", "Rojo Táctico", "Blanco Cuántico"])
@@ -171,7 +183,6 @@ st.markdown(f"""
     .stream-btn {{ background-color: #9146FF; color: white !important; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; display: block; margin-top: 20px; text-align: center; }}
     div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; border-radius: 8px; padding: 10px; width: 100%; }}
     
-    /* CSS BÓVEDA CAMALEÓN */
     .boveda-board {{ background-color: {c_card}; color: {c_text}; border: 2px solid {c_border}; border-radius: 14px; padding: 25px; margin-bottom: 25px; transition: 0.3s; }}
     .league-title {{ text-align: center; font-weight: 900; font-size: 24px; margin-bottom: 25px; border-bottom: 2px solid {c_border}; padding-bottom: 15px; }}
     .boveda-row {{ display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid {c_border}; }}
@@ -181,7 +192,6 @@ st.markdown(f"""
     .w-pred {{ font-weight: 900; color: {c_acc}; font-size: 14px; }}
     .w-cota {{ font-weight: 800; color: #EF4444; font-size: 12px; background: {c_btn}; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; border: 1px solid {c_border}; }}
     
-    /* PANEL DE CONTROL "PEGADO" (STICKY) ARRIBA */
     .sticky-panel {{ position: sticky; top: 0; z-index: 999; background-color: {c_bg}; padding: 10px 0; border-bottom: 1px solid {c_border}; }}
 
     div.row-widget.stRadio > div {{ flex-direction: row; justify-content: center; background: transparent; padding: 5px; }}
@@ -223,7 +233,6 @@ if st.sidebar.button("🗑️ Limpiar Caché (Forzar ZIP)", use_container_width=
 # ==========================================
 st.markdown(f"<h2 style='color:{c_text}; text-align: center; margin-bottom: 10px;'>📡 Radar Quant: {juego_sel}</h2>", unsafe_allow_html=True)
 
-# EL PANEL DE CONTROL STICKY (SE QUEDA ARRIBA)
 st.markdown('<div class="sticky-panel">', unsafe_allow_html=True)
 vista_global = "📡 MODO RADAR (Operar)"
 if juego_sel == "League of Legends":
@@ -264,14 +273,12 @@ else:
         league_name = m['league']['name']
 
         if juego_sel == "League of Legends":
-            # RECOLECTA 8 VARIABLES REALES
             wr1, form1, k1, tow1, drg1, bar1, fb1, time1 = fetch_oracle_elixir_data(t1['name'], t1['id']) 
             wr2, form2, k2, tow2, drg2, bar2, fb2, time2 = fetch_oracle_elixir_data(t2['name'], t2['id']) 
             
             p_gan_max = max(wr1, wr2) / (wr1+wr2 if (wr1+wr2)>0 else 1)
             eq_gan = t1['name'] if wr1 >= wr2 else t2['name']
             
-            # MATEMÁTICA PURA SEGÚN TU ARCHIVO
             has_data = (k1 > 0 and k2 > 0)
             
             if has_data:
@@ -300,52 +307,4 @@ else:
             else:
                 sd_html = f'<span style="color:{c_sub}; font-weight:bold;">S/D</span>'
                 res_fb = res_tow = res_drg = res_bar = res_kil = res_tim = sd_html
-
-            st.markdown(f"""<div class="glass-card">
-                <div style="margin-bottom: 15px; font-size: 13px; display: flex; justify-content: space-between;"><span>🏆 {league_name}</span>{badge}</div>
-                <div style="display: flex; justify-content: space-around; align-items: center; text-align: center;">
-                    <div style="width: 40%;"><div style="font-size:15px; font-weight:bold;">{t1['name']}</div><img src="{t1.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr1*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form1])}</div></div>
-                    <div style="font-size: 26px; font-weight: bold; color: {c_acc};">VS</div>
-                    <div style="width: 40%;"><div style="font-size:15px; font-weight:bold;">{t2['name']}</div><img src="{t2.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr2*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form2])}</div></div>
-                </div>
-                {boton_stream}
-            </div>""", unsafe_allow_html=True)
-            
-            if vista_global == "📡 MODO RADAR (Operar)":
-                with st.expander(f"⚙️ Panel Quant: {t1['name']} vs {t2['name']}"):
-                    mercados = ["-- Seleccione --", "⭐ PARTIDO: Ganador", "🗼 Total Torres", "🐉 Total Dragones", "👾 Total Barones", "⚔️ Total Kills", "⏱️ Duración", "🩸 Primera Sangre"]
-                    sel_m = st.selectbox("Mercado", mercados, key=f"m_{i}")
-                    if sel_m != "-- Seleccione --":
-                        if "Total" in sel_m or "Duración" in sel_m: op_sel = st.radio("Opción:", ["Más (+)", "Menos (-)"], key=f"o_{i}")
-                        else: op_sel = st.radio("A favor de:", [t1['name'], t2['name']], key=f"o_{i}")
-                        c_l, c_c = st.columns(2)
-                        cuo = c_c.number_input("Cuota Casino", value=1.00, step=0.01, key=f"c_{i}")
-                        prob_base = motor_moba(wr1, wr2, sel_m, op_sel, 0, t1['name'])
-                        st.markdown(f"""<div class="prob-box"><div style="font-size:12px;">Probabilidad</div><div class="prob-number">{prob_base*100:.1f}%</div><div style="font-size:10px;">C.Mín: {1/prob_base:.2f}</div></div>""", unsafe_allow_html=True)
-
-            elif vista_global == "📊 MODO BÓVEDA (Tablas Premium)":
-                n1, n2 = t1['name'][:10], t2['name'][:10]
-                st.markdown(f"""<div class="boveda-board">
-                    <div class="league-title">🏆 {league_name}</div>
-                    <div class="boveda-row"><div class="w-col-1">⭐ GANADOR</div><div class="w-col-2">{n1}: {wr1*100:.0f}%<br>{n2}: {wr2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">{eq_gan} ({p_gan_max*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_gan_max:.2f}</span></div></div>
-                    <div class="boveda-row"><div class="w-col-1">🩸 1RA SANGRE</div><div class="w-col-2">Historial ZIP<br>H2H Real</div><div class="w-col-3">{res_fb}</div></div>
-                    <div class="boveda-row"><div class="w-col-1">🗼 TORRES (12.5)</div><div class="w-col-2">{n1}: {tow1:.1f}<br>{n2}: {tow2:.1f}</div><div class="w-col-3">{res_tow}</div></div>
-                    <div class="boveda-row"><div class="w-col-1">🐉 DRAGONES (4.5)</div><div class="w-col-2">{n1}: {drg1:.1f}<br>{n2}: {drg2:.1f}</div><div class="w-col-3">{res_drg}</div></div>
-                    <div class="boveda-row"><div class="w-col-1">👾 BARONES (1.5)</div><div class="w-col-2">{n1}: {bar1:.1f}<br>{n2}: {bar2:.1f}</div><div class="w-col-3">{res_bar}</div></div>
-                    <div class="boveda-row"><div class="w-col-1">⚔️ TOTAL KILLS (28.5)</div><div class="w-col-2">{n1}: {k1:.1f}<br>{n2}: {k2:.1f}</div><div class="w-col-3">{res_kil}</div></div>
-                    <div class="boveda-row" style="border-bottom: none;"><div class="w-col-1">⏱️ TIEMPO (32.5)</div><div class="w-col-2">{n1}: {time1:.1f}m<br>{n2}: {time2:.1f}m</div><div class="w-col-3">{res_tim}</div></div>
-                </div>""", unsafe_allow_html=True)
-
-        else:
-            # INTERFAZ PARA OTROS JUEGOS
-            wr1, form1 = fetch_historical_data_general(slug, t1['id'])
-            wr2, form2 = fetch_historical_data_general(slug, t2['id'])
-            st.markdown(f"""<div class="glass-card">
-                <div style="margin-bottom: 15px; font-size: 13px; display: flex; justify-content: space-between;"><span>🏆 {league_name}</span>{badge}</div>
-                <div style="display: flex; justify-content: space-around; align-items: center; text-align: center;">
-                    <div style="width: 40%;"><div style="font-size:15px; font-weight:bold;">{t1['name']}</div><img src="{t1.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr1*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form1])}</div></div>
-                    <div style="font-size: 26px; font-weight: bold; color: {c_acc};">VS</div>
-                    <div style="width: 40%;"><div style="font-size:15px; font-weight:bold;">{t2['name']}</div><img src="{t2.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr2*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form2])}</div></div>
-                </div>
-                {boton_stream}
-            </div>""", unsafe_allow_html=True)
+                k1 = k2 = tow1 = tow2 = drg1 = drg2 = bar1 = bar2 =
