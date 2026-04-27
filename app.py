@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V41.0", layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V41.2", layout="centered", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -24,8 +24,8 @@ def check_password():
     """, unsafe_allow_html=True)
     
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V41.0</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>UI CAMALEÓN: BÓVEDA ADAPTABLE Y TEMA BLANCO</p>", unsafe_allow_html=True)
+    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V41.2</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>AUDITORÍA SUPERADA: 72H Y AUTO-LIMPIEZA</p>", unsafe_allow_html=True)
     with st.form("login_form"):
         u = st.text_input("Operador")
         p = st.text_input("Clave", type="password")
@@ -63,7 +63,8 @@ def gestionar_historial(nueva_op=None, index_update=None, nuevo_estado=None):
             gestionar_bank(gestionar_bank() + (df.at[index_update, 'Inversion'] * df.at[index_update, 'Cuota']))
         df.at[index_update, 'Estado'] = nuevo_estado
     df['Fecha'] = pd.to_datetime(df['Fecha'])
-    df = df[df['Fecha'] >= (datetime.utcnow() - timedelta(hours=52))]
+    # AJUSTE A 72 HORAS PARA EL HISTORIAL
+    df = df[df['Fecha'] >= (datetime.utcnow() - timedelta(hours=72))]
     df.to_csv(file_name, index=False)
     return df
 
@@ -77,42 +78,8 @@ def call_api_live(game_slug, endpoint, params_str=""):
     except: return []
 
 # ==========================================
-# 3. EL NINJA DE ORACLE ELIXIR
+# 3. EL NINJA DE ORACLE ELIXIR (PLAN B INTELIGENTE)
 # ==========================================
-@st.cache_data(ttl=28800, show_spinner=False)
-def fetch_oracle_elixir_data(team_name):
-    try:
-        url_oracle = "https://oracleselixir-downloadable-match-data.s3-us-west-2.amazonaws.com/2024_LoL_esports_match_data_from_OraclesElixir.csv"
-        df_team = pd.DataFrame()
-        for chunk in pd.read_csv(url_oracle, chunksize=5000, low_memory=False):
-            filtrado = chunk[(chunk['teamname'].str.contains(team_name, case=False, na=False)) & (chunk['position'] == 'team')]
-            df_team = pd.concat([df_team, filtrado])
-            if len(df_team) >= 10: break
-                
-        if not df_team.empty:
-            df_team['date'] = pd.to_datetime(df_team['date'], errors='coerce')
-            df_team = df_team.sort_values(by='date', ascending=False).head(10)
-            
-            wins = df_team['result'].sum() 
-            winrate = wins / len(df_team) if len(df_team) > 0 else 0.50
-            form = ['win' if r == 1 else 'loss' for r in df_team['result'].tolist()[:5]]
-            
-            cols = df_team.columns
-            avg_kills = df_team['teamkills'].mean() if 'teamkills' in cols else 14.0
-            avg_towers = df_team['towers'].mean() if 'towers' in cols else 6.0
-            avg_dragons = df_team['dragons'].mean() if 'dragons' in cols else 2.5
-            avg_barons = df_team['teambaronskills'].mean() if 'teambaronskills' in cols else 0.8
-            avg_time = (df_team['gamelength'].mean() / 60) if 'gamelength' in cols else 32.0
-            
-            return winrate, form, avg_kills, avg_towers, avg_dragons, avg_barons, avg_time
-        else:
-            return fetch_historical_pandascore("lol", team_name)
-    except:
-        return fetch_historical_pandascore("lol", team_name)
-
-def fetch_historical_pandascore(game_slug, team_name):
-    return 0.50, ['unknown']*5, 14.0, 6.0, 2.5, 0.8, 32.0 
-
 @st.cache_data(ttl=21600, show_spinner=False)
 def fetch_historical_data_general(game_slug, team_id):
     url = f"https://api.pandascore.co/{game_slug}/matches"
@@ -125,6 +92,45 @@ def fetch_historical_data_general(game_slug, team_id):
         form = ['win' if str(m.get('winner_id')) == str(team_id) else 'loss' for m in res]
         return (wins/len(res)), form[:5]
     except: return 0.50, ['unknown']*5
+
+def get_fallback_stats(team_id):
+    wr, form = fetch_historical_data_general("lol", team_id)
+    return wr, form, 14.5, 6.5, 2.5, 0.8, 32.5
+
+@st.cache_data(ttl=28800, show_spinner=False)
+def fetch_oracle_elixir_data(team_name, team_id):
+    try:
+        current_year = datetime.utcnow().year
+        url_oracle = f"https://oracleselixir-downloadable-match-data.s3-us-west-2.amazonaws.com/{current_year}_LoL_esports_match_data_from_OraclesElixir.csv"
+        df_team = pd.DataFrame()
+        
+        short_name = team_name.split()[0] if len(team_name.split()) > 0 else team_name
+        
+        for chunk in pd.read_csv(url_oracle, chunksize=5000, low_memory=False):
+            filtrado = chunk[(chunk['teamname'].str.contains(short_name, case=False, na=False)) & (chunk['position'] == 'team')]
+            df_team = pd.concat([df_team, filtrado])
+            if len(df_team) >= 10: break
+                
+        if not df_team.empty:
+            df_team['date'] = pd.to_datetime(df_team['date'], errors='coerce')
+            df_team = df_team.sort_values(by='date', ascending=False).head(10)
+            
+            wins = df_team['result'].sum() 
+            winrate = wins / len(df_team) if len(df_team) > 0 else 0.50
+            form = ['win' if r == 1 else 'loss' for r in df_team['result'].tolist()[:5]]
+            
+            cols = df_team.columns
+            avg_kills = df_team['teamkills'].mean() if 'teamkills' in cols else 14.5
+            avg_towers = df_team['towers'].mean() if 'towers' in cols else 6.5
+            avg_dragons = df_team['dragons'].mean() if 'dragons' in cols else 2.5
+            avg_barons = df_team['teambaronskills'].mean() if 'teambaronskills' in cols else 0.8
+            avg_time = (df_team['gamelength'].mean() / 60) if 'gamelength' in cols else 32.5
+            
+            return winrate, form, avg_kills, avg_towers, avg_dragons, avg_barons, avg_time
+        else:
+            return get_fallback_stats(team_id)
+    except:
+        return get_fallback_stats(team_id)
 
 def motor_moba(wr1, wr2, mercado, opcion, linea, t1_name):
     total_wr = wr1 + wr2 if (wr1+wr2)>0 else 1
@@ -148,12 +154,11 @@ def motor_fps(wr1, wr2, mercado, opcion, linea, t1_name):
     return max(0.05, min(0.95, prob))
 
 # ==========================================
-# 4. TEMAS Y CSS (SISTEMA DE PALETAS DINÁMICO)
+# 4. TEMAS Y CSS 
 # ==========================================
 st.sidebar.markdown("### 🎨 Apariencia")
 tema = st.sidebar.selectbox("", ["Azul Oscuro (Defecto)", "Verde Hacker", "Rojo Táctico", "Blanco Cuántico"])
 
-# Diccionario de Temas: (Fondo, Tarjeta, Texto, Acento, Borde, Botones/Cajas)
 colors = {
     "Azul Oscuro (Defecto)": ("#0B1120", "#1E293B", "#F1F5F9", "#38BDF8", "#334155", "#0F172A"),
     "Verde Hacker": ("#000000", "#051A05", "#4ADE80", "#10B981", "#064E3B", "#022C22"),
@@ -179,7 +184,6 @@ st.markdown(f"""
     .stream-btn {{ background-color: #9146FF; color: white !important; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; display: block; margin-top: 20px; text-align: center; }}
     div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; border-radius: 8px; padding: 10px; width: 100%; transition: 0.3s; }}
     
-    /* CSS BÓVEDA V41.0: EL CAMALEÓN CUÁNTICO (Adaptable al Tema) */
     .boveda-board {{ background-color: {c_card}; color: {c_text}; border: 2px solid {c_border}; border-radius: 14px; padding: 25px; font-family: 'Inter', sans-serif; box-shadow: 0 8px 16px rgba(0,0,0,0.08); margin-top: 10px; margin-bottom: 25px; transition: 0.3s; }}
     .league-title {{ text-align: center; font-weight: 900; font-size: 24px; margin-bottom: 25px; color: {c_text}; letter-spacing: 1px; text-transform: uppercase; border-bottom: 2px solid {c_border}; padding-bottom: 15px; }}
     .boveda-row {{ display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid {c_border}; }}
@@ -190,7 +194,6 @@ st.markdown(f"""
     .w-cota {{ font-weight: 800; color: #EF4444; font-size: 12px; background: {c_btn}; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; border: 1px solid {c_border}; }}
     .player-box {{ background: {c_btn}; padding: 12px 15px; border-radius: 10px; border: 1px solid {c_border}; font-size: 12px; text-align: center; margin-top: 25px; font-weight: 700; color: {c_text}; width: 48%; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }}
     
-    /* Diseño especial para el Switcher Frontal */
     div.row-widget.stRadio > div {{ flex-direction: row; justify-content: center; background: transparent; padding: 5px; }}
     div.row-widget.stRadio > div > label {{ font-size: 15px !important; font-weight: 900 !important; color: {c_text} !important; padding: 10px 20px; background: {c_card}; border-radius: 8px; border: 1px solid {c_border}; cursor: pointer; margin: 0 10px; transition: 0.3s; }}
     div.row-widget.stRadio > div > label:hover {{ border-color: {c_acc}; }}
@@ -231,7 +234,6 @@ if st.sidebar.button("🗑️ Limpiar Caché (Forzar Oracle)", use_container_wid
 # ==========================================
 st.markdown(f"<h2 style='color:{c_text}; text-align: center; margin-bottom: 10px;'>📡 Radar Quant: {juego_sel}</h2>", unsafe_allow_html=True)
 
-# EL BOTÓN GIGANTE FRONTAL
 vista_global = "📡 MODO RADAR (Operar)"
 if juego_sel == "League of Legends":
     vista_global = st.radio(
@@ -273,8 +275,8 @@ else:
         league_name = m['league']['name']
 
         if juego_sel == "League of Legends":
-            wr1, form1, k1, tow1, drg1, bar1, time1 = fetch_oracle_elixir_data(t1['name'])
-            wr2, form2, k2, tow2, drg2, bar2, time2 = fetch_oracle_elixir_data(t2['name'])
+            wr1, form1, k1, tow1, drg1, bar1, time1 = fetch_oracle_elixir_data(t1['name'], t1['id'])
+            wr2, form2, k2, tow2, drg2, bar2, time2 = fetch_oracle_elixir_data(t2['name'], t2['id'])
             
             exp_k = k1 + k2
             exp_tow = tow1 + tow2
@@ -303,7 +305,6 @@ else:
             n1 = t1['name'][:10]
             n2 = t2['name'][:10]
             
-            # LA TARJETA PRINCIPAL (Camaleónica)
             st.markdown(f"""
             <div class="glass-card">
                 <div style="margin-bottom: 15px; font-size: 13px; display: flex; justify-content: space-between;"><span>🏆 {league_name}</span>{badge}</div>
@@ -349,7 +350,6 @@ else:
                                 if st.button("REGISTRAR", key=f"reg_{i}"): gestionar_bank(bank_actual - stake); st.rerun()
 
             elif vista_global == "📊 MODO BÓVEDA (Tablas Premium)":
-                # HTML V41.0: CAMALEÓN (Toma los colores de CSS definidos arriba)
                 html_boveda = f"""
 <div class="boveda-board">
     <div class="league-title">🏆 {league_name}</div>
