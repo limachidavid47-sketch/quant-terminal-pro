@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V47.0", layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V48.0", layout="centered", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -24,8 +24,8 @@ def check_password():
     """, unsafe_allow_html=True)
     
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V47.0</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>MOTOR ESCÁNER Y GESTIÓN DE MEMORIA RAM</p>", unsafe_allow_html=True)
+    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V48.0</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>BASE DE DATOS 100% LOCAL Y BLINDADA</p>", unsafe_allow_html=True)
     with st.form("login_form"):
         u = st.text_input("Operador")
         p = st.text_input("Clave", type="password")
@@ -77,7 +77,7 @@ def call_api_live(game_slug, endpoint, params_str=""):
     except: return []
 
 # ==========================================
-# 3. EL NUEVO CEREBRO (LECTURA EN RAM Y ESCÁNER)
+# 3. EL CEREBRO QUANT (LECTURA LOCAL ZIP/CSV)
 # ==========================================
 @st.cache_data(ttl=21600, show_spinner=False)
 def fetch_historical_data_general(game_slug, team_id):
@@ -96,33 +96,40 @@ def get_fallback_stats(team_id):
     wr, form = fetch_historical_data_general("lol", team_id)
     return wr, form, 0, 0, 0, 0, 0, 0 
 
-# ⚡ LECTURA ÚNICA CON ALERTA DE ERRORES (Cero silenciadores)
+# ⚡ LECTURA DE BASE DE DATOS LOCAL BLINDADA
 @st.cache_data(ttl=28800, show_spinner=False)
 def load_oracle_database():
-    archivo = "datos_oracle.zip"
     columnas_clave = ['teamname', 'position', 'date', 'result', 'teamkills', 'towers', 'dragons', 'barons', 'firstblood', 'gamelength']
     
-    if not os.path.exists(archivo):
-        return pd.DataFrame(), f"El archivo '{archivo}' no existe en la carpeta."
-        
-    try:
-        df = pd.read_csv(archivo, compression='zip', usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
-        df.columns = df.columns.str.strip().str.lower()
-        return df, "OK"
-    except ValueError as ve:
-        return pd.DataFrame(), f"Error de columnas en el CSV interno: {ve}"
-    except Exception as e:
-        return pd.DataFrame(), f"No se pudo descomprimir o leer el archivo: {e}"
+    # 1. Intenta leer el ZIP primero
+    if os.path.exists("datos_oracle.zip"):
+        try:
+            df = pd.read_csv("datos_oracle.zip", compression='zip', usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
+            df.columns = df.columns.str.strip().str.lower()
+            return df, "OK"
+        except Exception as e:
+            return pd.DataFrame(), f"Error al leer datos_oracle.zip: {e}"
+            
+    # 2. Si no hay ZIP, intenta leer el CSV directo
+    elif os.path.exists("datos_oracle.csv"):
+        try:
+            df = pd.read_csv("datos_oracle.csv", usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
+            df.columns = df.columns.str.strip().str.lower()
+            return df, "OK"
+        except Exception as e:
+            return pd.DataFrame(), f"Error al leer datos_oracle.csv: {e}"
+            
+    # 3. Si no hay ninguno, lanza la Alerta Roja
+    else:
+        return pd.DataFrame(), "NO SE ENCUENTRA LA BASE DE DATOS. Por favor sube 'datos_oracle.zip' o 'datos_oracle.csv' a GitHub."
 
-# ⚡ BÚSQUEDA ULTRARRÁPIDA (Sin memoria caché pesada)
+# ⚡ BÚSQUEDA FUZZY INTELIGENTE EN RAM
 def get_team_stats(team_name, team_id, df_completo):
     if df_completo.empty: return get_fallback_stats(team_id)
     
-    # 1. Búsqueda Exacta
     df_team = df_completo[(df_completo['teamname'].str.lower() == team_name.lower()) & (df_completo['position'] == 'team')]
     
     if df_team.empty:
-        # 2. Búsqueda Fuzzy Inteligente
         basura = ['esports', 'challengers', 'academy', 'gaming', 'club', 'sports', 'youth', 'team', 'hanjin', 'dplus', 'oksavebank']
         words = team_name.lower().split()
         clean_words = [w for w in words if w not in basura]
@@ -244,7 +251,7 @@ juegos = {"League of Legends": "lol", "Dota 2": "dota2", "Mobile Legends": "mlbb
 juego_sel = st.sidebar.selectbox("Juego", list(juegos.keys()))
 slug = juegos[juego_sel]
 
-if st.sidebar.button("🗑️ Limpiar Caché (Forzar ZIP)", use_container_width=True): st.cache_data.clear(); st.rerun()
+if st.sidebar.button("🗑️ Forzar Actualización", use_container_width=True): st.cache_data.clear(); st.rerun()
 
 # ==========================================
 # 6. RADAR PRINCIPAL
@@ -262,11 +269,11 @@ if juego_sel == "League of Legends":
     )
 st.markdown('</div>', unsafe_allow_html=True)
 
-# 🚨 CARGA DE DATOS MAESTRA AL INICIO (Con Panel de Diagnóstico)
+# 🚨 CARGA DE DATOS AL INICIO
 if juego_sel == "League of Legends":
     df_oracle, oracle_status = load_oracle_database()
     if oracle_status != "OK":
-        st.error(f"🚨 ALERTA DE SISTEMA: {oracle_status} (Se han bloqueado los cálculos profundos por seguridad).")
+        st.error(f"🚨 ALERTA DEL SISTEMA: {oracle_status}")
 
 running = call_api_live(slug, "matches/running", "per_page=20")
 upcoming = call_api_live(slug, "matches/upcoming", "per_page=100&sort=begin_at")
@@ -297,7 +304,6 @@ else:
         league_name = m['league']['name']
 
         if juego_sel == "League of Legends":
-            # EXTRACCIÓN A LA VELOCIDAD DE LA LUZ
             wr1, form1, k1, tow1, drg1, bar1, fb1, time1 = get_team_stats(t1['name'], t1['id'], df_oracle) 
             wr2, form2, k2, tow2, drg2, bar2, fb2, time2 = get_team_stats(t2['name'], t2['id'], df_oracle) 
             
@@ -330,7 +336,7 @@ else:
                 res_kil = f'<span class="w-pred">{op_kills} ({p_kills*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_kills:.2f}</span>'
                 res_tim = f'<span class="w-pred">{op_tiempo} ({p_tiempo*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_tiempo:.2f}</span>'
             else:
-                sd_html = f'<span style="color:{c_sub}; font-weight:bold;">S/D (Solo Winrate)</span>'
+                sd_html = f'<span style="color:{c_sub}; font-weight:bold;">S/D (Faltan Datos Locales)</span>'
                 res_fb = res_tow = res_drg = res_bar = res_kil = res_tim = sd_html
                 k1 = k2 = tow1 = tow2 = drg1 = drg2 = bar1 = bar2 = time1 = time2 = "S/D"
 
@@ -350,7 +356,7 @@ else:
                     sel_m = st.selectbox("Mercado", mercados, key=f"m_{i}")
                     if sel_m != "-- Seleccione --":
                         if not has_data and sel_m in ["Total Torres", "Total Dragones", "Total Barones", "Total Kills", "Duración", "Primera Sangre"]:
-                            st.warning("⚠️ Sin datos matemáticos profundos en el ZIP. Cuidado al operar.")
+                            st.warning("⚠️ Base de datos local no dispone de metadatos profundos para este partido. Apuesta basándote solo en el Winrate.")
                         
                         if "Total" in sel_m or "Duración" in sel_m: op_sel = st.radio("Opción:", ["Más (+)", "Menos (-)"], key=f"o_{i}")
                         else: op_sel = st.radio("A favor de:", [t1['name'], t2['name']], key=f"o_{i}")
@@ -378,7 +384,7 @@ else:
                 st.markdown(f"""<div class="boveda-board">
                     <div class="league-title">🏆 {league_name}</div>
                     <div class="boveda-row"><div class="w-col-1">⭐ GANADOR</div><div class="w-col-2">{n1}: {wr1*100:.0f}%<br>{n2}: {wr2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">{eq_gan} ({p_gan_max*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_gan_max:.2f}</span></div></div>
-                    <div class="boveda-row"><div class="w-col-1">🩸 1RA SANGRE</div><div class="w-col-2">Historial Directo<br>H2H Real</div><div class="w-col-3">{res_fb}</div></div>
+                    <div class="boveda-row"><div class="w-col-1">🩸 1RA SANGRE</div><div class="w-col-2">Historial ZIP<br>H2H Real</div><div class="w-col-3">{res_fb}</div></div>
                     <div class="boveda-row"><div class="w-col-1">🗼 TORRES (12.5)</div><div class="w-col-2">{n1}: {tow1 if not has_data else f"{tow1:.1f}"}<br>{n2}: {tow2 if not has_data else f"{tow2:.1f}"}</div><div class="w-col-3">{res_tow}</div></div>
                     <div class="boveda-row"><div class="w-col-1">🐉 DRAGONES (4.5)</div><div class="w-col-2">{n1}: {drg1 if not has_data else f"{drg1:.1f}"}<br>{n2}: {drg2 if not has_data else f"{drg2:.1f}"}</div><div class="w-col-3">{res_drg}</div></div>
                     <div class="boveda-row"><div class="w-col-1">👾 BARONES (1.5)</div><div class="w-col-2">{n1}: {bar1 if not has_data else f"{bar1:.1f}"}<br>{n2}: {bar2 if not has_data else f"{bar2:.1f}"}</div><div class="w-col-3">{res_bar}</div></div>
