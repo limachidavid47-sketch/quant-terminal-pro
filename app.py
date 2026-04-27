@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V43.1", layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V43.2", layout="centered", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -24,8 +24,8 @@ def check_password():
     """, unsafe_allow_html=True)
     
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V43.1</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>LECTOR DE DATOS COMPRIMIDOS (ZIP) INTEGRADO</p>", unsafe_allow_html=True)
+    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V43.2</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>BUG DE COLOR FULMINADO. LECTURA DE ZIP ACTIVA.</p>", unsafe_allow_html=True)
     with st.form("login_form"):
         u = st.text_input("Operador")
         p = st.text_input("Clave", type="password")
@@ -99,7 +99,6 @@ def get_fallback_stats(team_id):
 @st.cache_data(ttl=28800, show_spinner=False)
 def fetch_oracle_elixir_data(team_name, team_id):
     try:
-        # AHORA APUNTA AL ARCHIVO ZIP
         archivo_local = "datos_oracle.zip" 
         
         columnas_clave = ['teamname', 'position', 'date', 'result', 'teamkills', 'towers', 'dragons', 'teambaronskills', 'gamelength']
@@ -107,7 +106,6 @@ def fetch_oracle_elixir_data(team_name, team_id):
         df_team = pd.DataFrame()
         short_name = team_name.split()[0] if len(team_name.split()) > 0 else team_name
         
-        # Le decimos a Pandas que lea el ZIP directamente
         for chunk in pd.read_csv(archivo_local, compression='zip', chunksize=5000, usecols=lambda c: c in columnas_clave, low_memory=False):
             filtrado = chunk[(chunk['teamname'].str.contains(short_name, case=False, na=False)) & (chunk['position'] == 'team')]
             df_team = pd.concat([df_team, filtrado])
@@ -194,6 +192,7 @@ st.markdown(f"""
     .w-col-3 {{ width: 30%; text-align: right; line-height: 1.5; }}
     .w-pred {{ font-weight: 900; color: {c_acc}; font-size: 14px; }}
     .w-cota {{ font-weight: 800; color: #EF4444; font-size: 12px; background: {c_btn}; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; border: 1px solid {c_border}; }}
+    .player-box {{ background: {c_btn}; padding: 12px 15px; border-radius: 10px; border: 1px solid {c_border}; font-size: 12px; text-align: center; margin-top: 25px; font-weight: 700; color: {c_text}; width: 48%; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }}
     
     div.row-widget.stRadio > div {{ flex-direction: row; justify-content: center; background: transparent; padding: 5px; }}
     div.row-widget.stRadio > div > label {{ font-size: 15px !important; font-weight: 900 !important; color: {c_text} !important; padding: 10px 20px; background: {c_card}; border-radius: 8px; border: 1px solid {c_border}; cursor: pointer; margin: 0 10px; transition: 0.3s; }}
@@ -324,7 +323,8 @@ else:
                 html_bar1, html_bar2 = "S/D", "S/D"
                 html_time1, html_time2 = "S/D", "S/D"
                 
-                sd_html = f'<span style="color:{c_sub}; font-weight:bold;">S/D</span>'
+                # AQUÍ ESTÁ EL ERROR FULMINADO (Cambié c_sub por un color hexadecimal estático)
+                sd_html = '<span style="color:#94A3B8; font-weight:bold;">S/D</span>'
                 html_res_tow = sd_html
                 html_res_drg = sd_html
                 html_res_bar = sd_html
@@ -354,7 +354,7 @@ else:
                     
                     if clean_m != "-- Seleccione --":
                         if not has_data and clean_m in ["Total Torres", "Total Dragones", "Total Barones", "Total Kills", "Duración"]:
-                            st.warning("⚠️ Oracle Elixir no dispone de metadatos profundos para este partido. Apuesta bajo tu propio riesgo basándote solo en el Winrate.")
+                            st.warning("⚠️ Base de datos local no dispone de metadatos profundos para este partido. Apuesta bajo tu propio riesgo basándote solo en el Winrate.")
                         
                         if "Total" in clean_m or "Duración" in clean_m: op_sel = st.radio("Opción:", ["Más (+)", "Menos (-)"], key=f"o_{i}")
                         else: op_sel = st.radio("A favor de:", [t1['name'], t2['name']], key=f"o_{i}")
