@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V53.0", layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V55.0", layout="centered", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -24,8 +24,8 @@ def check_password():
     """, unsafe_allow_html=True)
     
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V53.0</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>BUG DE WIDGETS FULMINADO | EN VIVO BLINDADO</p>", unsafe_allow_html=True)
+    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V55.0</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>DUELO ROL A ROL | TORRES TOTALES | CERO PESTAÑAS</p>", unsafe_allow_html=True)
     with st.form("login_form"):
         u = st.text_input("Operador")
         p = st.text_input("Clave", type="password")
@@ -75,7 +75,7 @@ def call_api_live(game_slug, endpoint, params_str=""):
     except: return []
 
 # ==========================================
-# 3. EL CEREBRO QUANT (24 MAPAS Y MVPs)
+# 3. EL CEREBRO QUANT (CON DUELO DE ROSTERS)
 # ==========================================
 @st.cache_data(ttl=21600, show_spinner=False)
 def fetch_historical_data_general(game_slug, team_id):
@@ -92,16 +92,31 @@ def fetch_historical_data_general(game_slug, team_id):
 
 def get_fallback_stats(team_id):
     wr, form = fetch_historical_data_general("lol", team_id)
-    return wr, form, 0, 0, 0, 0, 0, 0, "S/D", 0.0, "S/D"
+    return wr, form, 0, 0, 0, 0, 0, 0, 0, "S/D", 0.0, "S/D", {}
 
 @st.cache_data(ttl=28800, show_spinner=False)
 def load_oracle_database():
-    columnas_clave = ['teamname', 'position', 'date', 'result', 'teamkills', 'towers', 'dragons', 'barons', 'firstblood', 'gamelength', 'playername', 'champion', 'kills', 'deaths', 'assists']
+    # SE AGREGÓ 'opp_towers' PARA CALCULAR LA DEFENSA
+    columnas_clave = ['teamname', 'position', 'date', 'result', 'teamkills', 'towers', 'opp_towers', 'dragons', 'barons', 'firstblood', 'gamelength', 'playername', 'champion', 'kills', 'deaths', 'assists']
     try:
         url_aws = f"https://oracleselixir-downloadable-match-data.s3-us-west-2.amazonaws.com/{datetime.utcnow().year}_LoL_esports_match_data_from_OraclesElixir.csv"
+        
+        if os.path.exists("datos_oracle.zip"):
+            try:
+                df = pd.read_csv("datos_oracle.zip", compression='zip', usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
+                df.columns = df.columns.str.strip().str.lower()
+                return df, "OK (ZIP)"
+            except: pass
+        if os.path.exists("datos_oracle.csv"):
+            try:
+                df = pd.read_csv("datos_oracle.csv", usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
+                df.columns = df.columns.str.strip().str.lower()
+                return df, "OK (CSV)"
+            except: pass
+            
         df = pd.read_csv(url_aws, usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
         df.columns = df.columns.str.strip().str.lower()
-        return df, "OK"
+        return df, "OK (AWS)"
     except Exception as e:
         return pd.DataFrame(), f"Error Fatal: {e}"
 
@@ -115,26 +130,38 @@ def get_team_stats(team_name, team_id, df_completo):
     df_all_team = df_completo[df_completo['teamname'].str.lower().str.contains(core_name, na=False)]
     if df_all_team.empty: return get_fallback_stats(team_id)
 
-    # ESTADÍSTICAS DEL EQUIPO (24 MAPAS)
+    # 24 MAPAS EQUIPO
     df_team = df_all_team[df_all_team['position'] == 'team']
     df_team['date'] = pd.to_datetime(df_team['date'], errors='coerce')
     df_team = df_team.sort_values(by='date', ascending=False).head(24) 
     
     if df_team.empty: return get_fallback_stats(team_id)
     
-    # ESTADÍSTICAS DEL MVP (24 MAPAS)
+    # DATOS INDIVIDUALES Y ROSTERS ROL A ROL
     df_players = df_all_team[df_all_team['position'] != 'team']
     df_players['date'] = pd.to_datetime(df_players['date'], errors='coerce')
     df_players = df_players.sort_values(by='date', ascending=False).head(120) 
     
     mvp_n, mvp_kda, mvp_c = "S/D", 0.0, "S/D"
+    roster = {}
     if not df_players.empty:
+        # CÁLCULO DE MVP
         p_stats = df_players.groupby('playername').agg({'kills':'sum', 'deaths':'sum', 'assists':'sum', 'champion':lambda x: x.mode()[0] if not x.empty else '?'}).reset_index()
         p_stats['deaths'] = p_stats['deaths'].replace(0, 1) 
         p_stats['kda'] = (p_stats['kills'] + p_stats['assists']) / p_stats['deaths']
         if not p_stats.empty:
             best = p_stats.loc[p_stats['kda'].idxmax()]
             mvp_n, mvp_kda, mvp_c = best['playername'], best['kda'], best['champion']
+            
+        # CÁLCULO DE WINRATE ROL A ROL PARA LAS CARRERAS DE KILLS
+        for pos in ['top', 'jng', 'mid', 'bot', 'sup']:
+            df_pos = df_players[df_players['position'] == pos]
+            if not df_pos.empty:
+                p_name = df_pos['playername'].mode()[0]
+                p_wr = df_pos[df_pos['playername'] == p_name]['result'].mean()
+                roster[pos] = (p_name, p_wr)
+            else:
+                roster[pos] = ("S/D", 0.0)
 
     wins = df_team['result'].sum() 
     winrate = wins / len(df_team) if len(df_team) > 0 else 0.50
@@ -143,12 +170,13 @@ def get_team_stats(team_name, team_id, df_completo):
     cols = df_team.columns
     avg_kills = df_team['teamkills'].mean() if 'teamkills' in cols else 0
     avg_towers = df_team['towers'].mean() if 'towers' in cols else 0
+    avg_opp_towers = df_team['opp_towers'].mean() if 'opp_towers' in cols else 0 # Torres en contra
     avg_dragons = df_team['dragons'].mean() if 'dragons' in cols else 0
     avg_barons = df_team['barons'].mean() if 'barons' in cols else 0
     avg_fb = df_team['firstblood'].mean() if 'firstblood' in cols else 0
     avg_time = (df_team['gamelength'].mean() / 60) if 'gamelength' in cols else 0
     
-    return winrate, form, avg_kills, avg_towers, avg_dragons, avg_barons, avg_fb, avg_time, mvp_n, mvp_kda, mvp_c
+    return winrate, form, avg_kills, avg_towers, avg_opp_towers, avg_dragons, avg_barons, avg_fb, avg_time, mvp_n, mvp_kda, mvp_c, roster
 
 def motor_moba(wr1, wr2, mercado, opcion, linea, t1_name):
     total_wr = wr1 + wr2 if (wr1+wr2)>0 else 1
@@ -215,6 +243,8 @@ st.markdown(f"""
     div.row-widget.stRadio > div {{ flex-direction: row; justify-content: center; background: transparent; padding: 5px; }}
     div.row-widget.stRadio > div > label {{ font-size: 14px !important; font-weight: 800 !important; color: {c_text} !important; padding: 6px 15px; background: {c_btn}; border-radius: 6px; border: 1px solid {c_border}; cursor: pointer; margin: 0 5px; transition: 0.3s; }}
     div.row-widget.stRadio > div > label:hover {{ border-color: {c_acc}; }}
+    
+    .flat-panel {{ background: rgba(15, 23, 42, 0.4); border: 1px solid {c_border}; border-radius: 10px; padding: 15px; margin-top: -10px; margin-bottom: 25px; }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -281,7 +311,7 @@ for p in partidos_totales:
         if limite_inferior <= dt_local <= limite_semana: partidos_filtrados.append(p)
 
 if not partidos_filtrados: 
-    st.info("No hay actividad programada para las próximas horas.")
+    st.info("No hay actividad programada.")
 else:
     for i, m in enumerate(partidos_filtrados[:20]):
         opp = m.get('opponents', [])
@@ -294,8 +324,9 @@ else:
         league_name = m['league']['name']
 
         if juego_sel == "League of Legends":
-            wr1, form1, k1, tow1, drg1, bar1, fb1, time1, mvp_n1, mvp_kda1, mvp_c1 = get_team_stats(t1['name'], t1['id'], df_oracle) 
-            wr2, form2, k2, tow2, drg2, bar2, fb2, time2, mvp_n2, mvp_kda2, mvp_c2 = get_team_stats(t2['name'], t2['id'], df_oracle) 
+            # 13 VARIABLES AHORA (Incluye Torres Pierde y Rosters)
+            wr1, form1, k1, tow1, optow1, drg1, bar1, fb1, time1, mvp_n1, mvp_kda1, mvp_c1, roster1 = get_team_stats(t1['name'], t1['id'], df_oracle) 
+            wr2, form2, k2, tow2, optow2, drg2, bar2, fb2, time2, mvp_n2, mvp_kda2, mvp_c2, roster2 = get_team_stats(t2['name'], t2['id'], df_oracle) 
             
             p_gan_max = max(wr1, wr2) / (wr1+wr2 if (wr1+wr2)>0 else 1)
             eq_gan = t1['name'] if wr1 >= wr2 else t2['name']
@@ -306,7 +337,10 @@ else:
                 p_fb_real = max(0.05, min(0.95, fb1 / (fb1 + fb2 if (fb1+fb2)>0 else 1)))
                 eq_fb = t1['name'] if fb1 >= fb2 else t2['name']
                 
-                exp_k, exp_tow, exp_drg, exp_bar, exp_time = (k1+k2), (tow1+tow2), (drg1+drg2), (bar1+bar2), (time1+time2)/2
+                # 🗼 TORRES TOTALES MATEMÁTICAS (A favor + En contra) / 2
+                exp_tow = ((tow1 + optow1) + (tow2 + optow2)) / 2
+                
+                exp_k, exp_drg, exp_bar, exp_time = (k1+k2), (drg1+drg2), (bar1+bar2), (time1+time2)/2
                 
                 p_k_mas = max(0.05, min(0.95, 0.50 + (exp_k - 28.5) * 0.03))
                 p_to_mas = max(0.05, min(0.95, 0.50 + (exp_tow - 12.5) * 0.10))
@@ -328,7 +362,7 @@ else:
             else:
                 sd_html = f'<span style="color:{c_sub}; font-weight:bold;">S/D (Faltan Datos)</span>'
                 res_fb = res_tow = res_drg = res_bar = res_kil = res_tim = sd_html
-                k1 = k2 = tow1 = tow2 = drg1 = drg2 = bar1 = bar2 = time1 = time2 = "S/D"
+                k1 = k2 = tow1 = optow1 = tow2 = optow2 = drg1 = drg2 = bar1 = bar2 = time1 = time2 = "S/D"
 
             st.markdown(f"""<div class="glass-card">
                 <div style="margin-bottom: 15px; font-size: 13px; display: flex; justify-content: space-between;"><span>🏆 {league_name}</span>{badge}</div>
@@ -341,17 +375,16 @@ else:
             </div>""", unsafe_allow_html=True)
             
             if vista_global == "📡 MODO RADAR (Operar)":
-                # ⚡ PANEL DE CÁLCULO PLANO (SIN PESTAÑAS)
+                # ⚡ PANTALLA PLANA DE APUESTAS
                 with st.container(border=True):
                     st.markdown(f"<div style='font-size:12px; font-weight:900; color:{c_acc}; margin-bottom:10px; text-transform:uppercase;'>⚡ Panel de Cálculo y Riesgo</div>", unsafe_allow_html=True)
                     
-                    mercados = ["-- Seleccione --", "⭐ PARTIDO: Ganador", "🗼 Total Torres", "🐉 Total Dragones", "👾 Total Barones", "⚔️ Total Kills", "⏱️ Duración", "🩸 Primera Sangre"]
+                    mercados = ["-- Seleccione --", "⭐ PARTIDO: Ganador", "🗼 Total Torres", "🐉 Total Dragones", "👾 Total Barones", "⚔️ Total Kills", "⏱️ Duración", "🩸 Primera Sangre", "🏁 Carrera a 5 Kills", "🏁 Carrera a 10 Kills"]
                     
                     c_m1, c_m2 = st.columns(2)
                     sel_m = c_m1.selectbox("Mercado", mercados, key=f"m_{i}", label_visibility="collapsed")
                     
                     if sel_m != "-- Seleccione --":
-                        # CLAVES DINÁMICAS (EVITA EL CRASHEO ROJO)
                         key_radio = f"o_{i}_{sel_m}"
                         key_linea = f"l_{i}_{sel_m}"
                         key_cuota = f"c_{i}_{sel_m}"
@@ -366,7 +399,13 @@ else:
                         cuo = c_l2.number_input("Cuota del Casino", value=1.00, step=0.01, key=key_cuota)
                         
                         if has_data:
-                            if "Kills" in sel_m: prob_base = 0.50 + (exp_k - lin) * 0.03
+                            # 🏁 ALGORITMO ROL A ROL PARA CARRERAS
+                            if "Carrera" in sel_m:
+                                roster_wr1 = sum([x[1] for x in roster1.values()]) / 5 if roster1 else wr1
+                                roster_wr2 = sum([x[1] for x in roster2.values()]) / 5 if roster2 else wr2
+                                prob_base = motor_moba(roster_wr1, roster_wr2, sel_m, op_sel, lin, t1['name'])
+                            
+                            elif "Kills" in sel_m and "Total" in sel_m: prob_base = 0.50 + (exp_k - lin) * 0.03
                             elif "Torres" in sel_m: prob_base = 0.50 + (exp_tow - lin) * 0.10
                             elif "Dragones" in sel_m: prob_base = 0.50 + (exp_drg - lin) * 0.15
                             elif "Barones" in sel_m: prob_base = 0.50 + (exp_bar - lin) * 0.25
@@ -405,11 +444,30 @@ else:
 
             elif vista_global == "📊 MODO BÓVEDA (Tablas Premium)":
                 n1, n2 = t1['name'][:10], t2['name'][:10]
+                
+                def f_ros(pos_name, pos_key):
+                    p1, w1 = roster1.get(pos_key, ("S/D", 0)) if has_data else ("S/D", 0)
+                    p2, w2 = roster2.get(pos_key, ("S/D", 0)) if has_data else ("S/D", 0)
+                    w1s = f"{w1*100:.0f}%" if p1 != "S/D" else "-"
+                    w2s = f"{w2*100:.0f}%" if p2 != "S/D" else "-"
+                    return f'<div style="display:flex; justify-content:space-between; margin-bottom:4px;"><div style="width:35%; text-align:right;">{p1[:8]} <b>({w1s})</b></div><div style="width:30%; text-align:center; color:{c_acc}; font-weight:bold;">{pos_name}</div><div style="width:35%; text-align:left;"><b>({w2s})</b> {p2[:8]}</div></div>'
+
+                html_duelo = f"""<div style="margin-top: 20px; border-top: 1px solid {c_border}; padding-top: 15px;">
+                    <div style="text-align:center; font-weight:900; font-size:12px; color:{c_text}; margin-bottom:10px; text-transform:uppercase;">⚔️ DUELO DE ROSTERS (WINRATE INDIVIDUAL)</div>
+                    <div style="font-size:11px; color:{c_text};">
+                        {f_ros('TOP', 'top')}
+                        {f_ros('JUNGLA', 'jng')}
+                        {f_ros('MID', 'mid')}
+                        {f_ros('ADC', 'bot')}
+                        {f_ros('SUPPORT', 'sup')}
+                    </div>
+                </div>"""
+
                 st.markdown(f"""<div class="boveda-board">
                     <div class="league-title">🏆 {league_name}</div>
                     <div class="boveda-row"><div class="w-col-1">⭐ GANADOR</div><div class="w-col-2">{n1}: {wr1*100:.0f}%<br>{n2}: {wr2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">{eq_gan} ({p_gan_max*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/p_gan_max:.2f}</span></div></div>
                     <div class="boveda-row"><div class="w-col-1">🩸 1RA SANGRE</div><div class="w-col-2">Historial Directo<br>24 Mapas Real</div><div class="w-col-3">{res_fb}</div></div>
-                    <div class="boveda-row"><div class="w-col-1">🗼 TORRES (12.5)</div><div class="w-col-2">{n1}: {tow1 if not has_data else f"{tow1:.1f}"}<br>{n2}: {tow2 if not has_data else f"{tow2:.1f}"}</div><div class="w-col-3">{res_tow}</div></div>
+                    <div class="boveda-row"><div class="w-col-1">🗼 TORRES (12.5)</div><div class="w-col-2">{n1}: +{tow1 if not has_data else f"{tow1:.1f}"} / -{optow1 if not has_data else f"{optow1:.1f}"}<br>{n2}: +{tow2 if not has_data else f"{tow2:.1f}"} / -{optow2 if not has_data else f"{optow2:.1f}"}</div><div class="w-col-3">{res_tow}</div></div>
                     <div class="boveda-row"><div class="w-col-1">🐉 DRAGONES (4.5)</div><div class="w-col-2">{n1}: {drg1 if not has_data else f"{drg1:.1f}"}<br>{n2}: {drg2 if not has_data else f"{drg2:.1f}"}</div><div class="w-col-3">{res_drg}</div></div>
                     <div class="boveda-row"><div class="w-col-1">👾 BARONES (1.5)</div><div class="w-col-2">{n1}: {bar1 if not has_data else f"{bar1:.1f}"}<br>{n2}: {bar2 if not has_data else f"{bar2:.1f}"}</div><div class="w-col-3">{res_bar}</div></div>
                     <div class="boveda-row"><div class="w-col-1">⚔️ TOTAL KILLS (28.5)</div><div class="w-col-2">{n1}: {k1 if not has_data else f"{k1:.1f}"}<br>{n2}: {k2 if not has_data else f"{k2:.1f}"}</div><div class="w-col-3">{res_kil}</div></div>
@@ -419,10 +477,11 @@ else:
                         <div class="player-box">👑 MVP Estrella: <b>{mvp_n1}</b><br>KDA: {mvp_kda1 if type(mvp_kda1)==str else f"{mvp_kda1:.1f}"} | Main: {mvp_c1}</div>
                         <div class="player-box">👑 MVP Estrella: <b>{mvp_n2}</b><br>KDA: {mvp_kda2 if type(mvp_kda2)==str else f"{mvp_kda2:.1f}"} | Main: {mvp_c2}</div>
                     </div>
+                    {html_duelo if has_data else ""}
                 </div>""", unsafe_allow_html=True)
 
         else:
-            # INTERFAZ PARA OTROS JUEGOS (PLANA SIN PESTAÑAS)
+            # INTERFAZ PARA OTROS JUEGOS
             wr1, form1 = fetch_historical_data_general(slug, t1['id'])
             wr2, form2 = fetch_historical_data_general(slug, t2['id'])
             st.markdown(f"""<div class="glass-card">
