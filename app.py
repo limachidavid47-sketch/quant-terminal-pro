@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V41.2", layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V43.1", layout="centered", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -24,8 +24,8 @@ def check_password():
     """, unsafe_allow_html=True)
     
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V41.2</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>NINJA REPARADO: SINCRONIZACIÓN PANDASCORE</p>", unsafe_allow_html=True)
+    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V43.1</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>LECTOR DE DATOS COMPRIMIDOS (ZIP) INTEGRADO</p>", unsafe_allow_html=True)
     with st.form("login_form"):
         u = st.text_input("Operador")
         p = st.text_input("Clave", type="password")
@@ -63,7 +63,6 @@ def gestionar_historial(nueva_op=None, index_update=None, nuevo_estado=None):
             gestionar_bank(gestionar_bank() + (df.at[index_update, 'Inversion'] * df.at[index_update, 'Cuota']))
         df.at[index_update, 'Estado'] = nuevo_estado
     df['Fecha'] = pd.to_datetime(df['Fecha'])
-    # AJUSTE A 72 HORAS PARA EL HISTORIAL
     df = df[df['Fecha'] >= (datetime.utcnow() - timedelta(hours=72))]
     df.to_csv(file_name, index=False)
     return df
@@ -78,7 +77,7 @@ def call_api_live(game_slug, endpoint, params_str=""):
     except: return []
 
 # ==========================================
-# 3. EL NINJA DE ORACLE ELIXIR (PLAN B INTELIGENTE)
+# 3. EL NINJA (LECTURA ZIP ULTRALIVIANA)
 # ==========================================
 @st.cache_data(ttl=21600, show_spinner=False)
 def fetch_historical_data_general(game_slug, team_id):
@@ -93,22 +92,23 @@ def fetch_historical_data_general(game_slug, team_id):
         return (wins/len(res)), form[:5]
     except: return 0.50, ['unknown']*5
 
-# Plan B: Si Oracle falla, sacamos Winrate REAL de PandaScore
 def get_fallback_stats(team_id):
     wr, form = fetch_historical_data_general("lol", team_id)
-    return wr, form, 14.5, 6.5, 2.5, 0.8, 32.5
+    return wr, form, 0, 0, 0, 0, 0 
 
-@st.cache_data(ttl=28800, show_spinner=False) # Candado de 8 Horas
+@st.cache_data(ttl=28800, show_spinner=False)
 def fetch_oracle_elixir_data(team_name, team_id):
     try:
-        current_year = datetime.utcnow().year
-        url_oracle = f"https://oracleselixir-downloadable-match-data.s3-us-west-2.amazonaws.com/{current_year}_LoL_esports_match_data_from_OraclesElixir.csv" # Base de Datos Maestra CSV
-        df_team = pd.DataFrame()
+        # AHORA APUNTA AL ARCHIVO ZIP
+        archivo_local = "datos_oracle.zip" 
         
-        # Filtro más inteligente para nombres de equipos
+        columnas_clave = ['teamname', 'position', 'date', 'result', 'teamkills', 'towers', 'dragons', 'teambaronskills', 'gamelength']
+        
+        df_team = pd.DataFrame()
         short_name = team_name.split()[0] if len(team_name.split()) > 0 else team_name
         
-        for chunk in pd.read_csv(url_oracle, chunksize=5000, low_memory=False): # Lectura en fragmentos del CSV maestro
+        # Le decimos a Pandas que lea el ZIP directamente
+        for chunk in pd.read_csv(archivo_local, compression='zip', chunksize=5000, usecols=lambda c: c in columnas_clave, low_memory=False):
             filtrado = chunk[(chunk['teamname'].str.contains(short_name, case=False, na=False)) & (chunk['position'] == 'team')]
             df_team = pd.concat([df_team, filtrado])
             if len(df_team) >= 10: break
@@ -122,17 +122,17 @@ def fetch_oracle_elixir_data(team_name, team_id):
             form = ['win' if r == 1 else 'loss' for r in df_team['result'].tolist()[:5]]
             
             cols = df_team.columns
-            avg_kills = df_team['teamkills'].mean() if 'teamkills' in cols else 14.5
-            avg_towers = df_team['towers'].mean() if 'towers' in cols else 6.5
-            avg_dragons = df_team['dragons'].mean() if 'dragons' in cols else 2.5
-            avg_barons = df_team['teambaronskills'].mean() if 'teambaronskills' in cols else 0.8
-            avg_time = (df_team['gamelength'].mean() / 60) if 'gamelength' in cols else 32.5
+            avg_kills = df_team['teamkills'].mean() if 'teamkills' in cols else 0
+            avg_towers = df_team['towers'].mean() if 'towers' in cols else 0
+            avg_dragons = df_team['dragons'].mean() if 'dragons' in cols else 0
+            avg_barons = df_team['teambaronskills'].mean() if 'teambaronskills' in cols else 0
+            avg_time = (df_team['gamelength'].mean() / 60) if 'gamelength' in cols else 0
             
             return winrate, form, avg_kills, avg_towers, avg_dragons, avg_barons, avg_time
         else:
-            return get_fallback_stats(team_id) # Activación del Plan B Inteligente
+            return get_fallback_stats(team_id)
     except:
-        return get_fallback_stats(team_id) # Activación del Plan B Inteligente
+        return get_fallback_stats(team_id)
 
 def motor_moba(wr1, wr2, mercado, opcion, linea, t1_name):
     total_wr = wr1 + wr2 if (wr1+wr2)>0 else 1
@@ -194,7 +194,6 @@ st.markdown(f"""
     .w-col-3 {{ width: 30%; text-align: right; line-height: 1.5; }}
     .w-pred {{ font-weight: 900; color: {c_acc}; font-size: 14px; }}
     .w-cota {{ font-weight: 800; color: #EF4444; font-size: 12px; background: {c_btn}; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; border: 1px solid {c_border}; }}
-    .player-box {{ background: {c_btn}; padding: 12px 15px; border-radius: 10px; border: 1px solid {c_border}; font-size: 12px; text-align: center; margin-top: 25px; font-weight: 700; color: {c_text}; width: 48%; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }}
     
     div.row-widget.stRadio > div {{ flex-direction: row; justify-content: center; background: transparent; padding: 5px; }}
     div.row-widget.stRadio > div > label {{ font-size: 15px !important; font-weight: 900 !important; color: {c_text} !important; padding: 10px 20px; background: {c_card}; border-radius: 8px; border: 1px solid {c_border}; cursor: pointer; margin: 0 10px; transition: 0.3s; }}
@@ -229,7 +228,7 @@ juegos = {"League of Legends": "lol", "Dota 2": "dota2", "Mobile Legends": "mlbb
 juego_sel = st.sidebar.selectbox("Juego", list(juegos.keys()))
 slug = juegos[juego_sel]
 
-if st.sidebar.button("🗑️ Limpiar Caché (Forzar Oracle)", use_container_width=True): st.cache_data.clear(); st.rerun() # Botón de forzado de caché
+if st.sidebar.button("🗑️ Limpiar Caché (Forzar API/Local)", use_container_width=True): st.cache_data.clear(); st.rerun()
 
 # ==========================================
 # 6. RADAR PRINCIPAL
@@ -246,8 +245,8 @@ if juego_sel == "League of Legends":
     )
     st.markdown(f"<hr style='border:1px solid {c_border}; margin-top: 15px; margin-bottom: 25px;'>", unsafe_allow_html=True)
 
-running = call_api_live(slug, "matches/running", "per_page=20") # Solo partidos en vivo
-upcoming = call_api_live(slug, "matches/upcoming", "per_page=100&sort=begin_at") # Solo partidos próximos
+running = call_api_live(slug, "matches/running", "per_page=20")
+upcoming = call_api_live(slug, "matches/upcoming", "per_page=100&sort=begin_at")
 partidos_totales = running + upcoming
 
 hoy_utc = datetime.utcnow()
@@ -261,12 +260,12 @@ for p in partidos_totales:
     elif p['status'] == 'not_started' and p.get('begin_at'):
         dt_utc = datetime.strptime(p['begin_at'], "%Y-%m-%dT%H:%M:%SZ")
         dt_local = dt_utc - timedelta(hours=4)
-        if limite_inferior <= dt_local <= limite_semana: partidos_filtrados.append(p) # Filtrado para planificación de 7 días
+        if limite_inferior <= dt_local <= limite_semana: partidos_filtrados.append(p)
 
 if not partidos_filtrados: 
     st.info("No hay actividad programada en los próximos 7 días.")
 else:
-    for i, m in enumerate(partidos_filtrados[:20]): # No se incluyen partidos finalizados ('finished')
+    for i, m in enumerate(partidos_filtrados[:20]):
         opp = m.get('opponents', [])
         if len(opp) < 2: continue
         t1, t2 = opp[0]['opponent'], opp[1]['opponent']
@@ -277,33 +276,61 @@ else:
         league_name = m['league']['name']
 
         if juego_sel == "League of Legends":
-            wr1, form1, k1, tow1, drg1, bar1, time1 = fetch_oracle_elixir_data(t1['name'], t1['id']) # Uso de Team ID para Plan B
-            wr2, form2, k2, tow2, drg2, bar2, time2 = fetch_oracle_elixir_data(t2['name'], t2['id']) # Uso de Team ID para Plan B
-            
-            exp_k = k1 + k2
-            exp_tow = tow1 + tow2
-            exp_drg = drg1 + drg2
-            exp_bar = bar1 + bar2
-            exp_time = (time1 + time2) / 2
+            wr1, form1, k1, tow1, drg1, bar1, time1 = fetch_oracle_elixir_data(t1['name'], t1['id']) 
+            wr2, form2, k2, tow2, drg2, bar2, time2 = fetch_oracle_elixir_data(t2['name'], t2['id']) 
             
             p_gan_max = max(wr1, wr2) / (wr1+wr2 if (wr1+wr2)>0 else 1)
             eq_gan = t1['name'] if wr1 >= wr2 else t2['name']
-            
             p_fb = 0.50 + ((p_gan_max - 0.50) * 0.7)
             
-            p_k_mas = max(0.05, min(0.95, 0.50 + (exp_k - 28.5) * 0.03))
-            p_to_mas = max(0.05, min(0.95, 0.50 + (exp_tow - 12.5) * 0.10))
-            p_d_mas = max(0.05, min(0.95, 0.50 + (exp_drg - 4.5) * 0.15))
-            p_b_mas = max(0.05, min(0.95, 0.50 + (exp_bar - 1.5) * 0.25))
-            p_t_mas = max(0.05, min(0.95, 0.50 + (exp_time - 32.5) * 0.05))
+            has_data = (k1 > 0 and k2 > 0)
             
-            def get_tot(p_mas): return (p_mas, "Más") if p_mas >= 0.50 else (1 - p_mas, "Menos")
-            p_kills, op_kills = get_tot(p_k_mas)
-            p_tiempo, op_tiempo = get_tot(p_t_mas)
-            p_torres, op_torres = get_tot(p_to_mas)
-            p_drag, op_drag = get_tot(p_d_mas)
-            p_bar, op_bar = get_tot(p_b_mas)
-            
+            if has_data:
+                exp_k = k1 + k2
+                exp_tow = tow1 + tow2
+                exp_drg = drg1 + drg2
+                exp_bar = bar1 + bar2
+                exp_time = (time1 + time2) / 2
+                
+                p_k_mas = max(0.05, min(0.95, 0.50 + (exp_k - 28.5) * 0.03))
+                p_to_mas = max(0.05, min(0.95, 0.50 + (exp_tow - 12.5) * 0.10))
+                p_d_mas = max(0.05, min(0.95, 0.50 + (exp_drg - 4.5) * 0.15))
+                p_b_mas = max(0.05, min(0.95, 0.50 + (exp_bar - 1.5) * 0.25))
+                p_t_mas = max(0.05, min(0.95, 0.50 + (exp_time - 32.5) * 0.05))
+                
+                def get_tot(p_mas): return (p_mas, "Más") if p_mas >= 0.50 else (1 - p_mas, "Menos")
+                p_kills, op_kills = get_tot(p_k_mas)
+                p_tiempo, op_tiempo = get_tot(p_t_mas)
+                p_torres, op_torres = get_tot(p_to_mas)
+                p_drag, op_drag = get_tot(p_d_mas)
+                p_bar, op_bar = get_tot(p_b_mas)
+                
+                html_k1, html_k2 = f"{k1:.1f}", f"{k2:.1f}"
+                html_tow1, html_tow2 = f"{tow1:.1f}", f"{tow2:.1f}"
+                html_drg1, html_drg2 = f"{drg1:.1f}", f"{drg2:.1f}"
+                html_bar1, html_bar2 = f"{bar1:.1f}", f"{bar2:.1f}"
+                html_time1, html_time2 = f"{time1:.1f}m", f"{time2:.1f}m"
+                
+                html_res_tow = f'<span class="w-pred">{op_torres} ({p_torres*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_torres:.2f}</span>'
+                html_res_drg = f'<span class="w-pred">{op_drag} ({p_drag*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_drag:.2f}</span>'
+                html_res_bar = f'<span class="w-pred">{op_bar} ({p_bar*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_bar:.2f}</span>'
+                html_res_kil = f'<span class="w-pred">{op_kills} ({p_kills*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_kills:.2f}</span>'
+                html_res_tim = f'<span class="w-pred">{op_tiempo} ({p_tiempo*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_tiempo:.2f}</span>'
+
+            else:
+                html_k1, html_k2 = "S/D", "S/D"
+                html_tow1, html_tow2 = "S/D", "S/D"
+                html_drg1, html_drg2 = "S/D", "S/D"
+                html_bar1, html_bar2 = "S/D", "S/D"
+                html_time1, html_time2 = "S/D", "S/D"
+                
+                sd_html = f'<span style="color:{c_sub}; font-weight:bold;">S/D</span>'
+                html_res_tow = sd_html
+                html_res_drg = sd_html
+                html_res_bar = sd_html
+                html_res_kil = sd_html
+                html_res_tim = sd_html
+
             n1 = t1['name'][:10]
             n2 = t2['name'][:10]
             
@@ -326,6 +353,9 @@ else:
                     clean_m = sel_m.replace("🔥 ", "").replace("❄️🔥 ", "") 
                     
                     if clean_m != "-- Seleccione --":
+                        if not has_data and clean_m in ["Total Torres", "Total Dragones", "Total Barones", "Total Kills", "Duración"]:
+                            st.warning("⚠️ Oracle Elixir no dispone de metadatos profundos para este partido. Apuesta bajo tu propio riesgo basándote solo en el Winrate.")
+                        
                         if "Total" in clean_m or "Duración" in clean_m: op_sel = st.radio("Opción:", ["Más (+)", "Menos (-)"], key=f"o_{i}")
                         else: op_sel = st.radio("A favor de:", [t1['name'], t2['name']], key=f"o_{i}")
                         
@@ -334,12 +364,15 @@ else:
                         lin = c_l.number_input("Línea Flexible", value=def_l, key=f"l_{i}")
                         cuo = c_c.number_input("Cuota Casino", value=1.00, step=0.01, key=f"c_{i}")
 
-                        if "Kills" in clean_m: prob_base = 0.50 + (exp_k - lin) * 0.03
-                        elif "Torres" in clean_m: prob_base = 0.50 + (exp_tow - lin) * 0.10
-                        elif "Dragones" in clean_m: prob_base = 0.50 + (exp_drg - lin) * 0.15
-                        elif "Barones" in clean_m: prob_base = 0.50 + (exp_bar - lin) * 0.25
-                        elif "Duración" in clean_m: prob_base = 0.50 + (exp_time - lin) * 0.05
-                        else: prob_base = motor_moba(wr1, wr2, clean_m, op_sel, lin, t1['name'])
+                        if has_data:
+                            if "Kills" in clean_m: prob_base = 0.50 + (exp_k - lin) * 0.03
+                            elif "Torres" in clean_m: prob_base = 0.50 + (exp_tow - lin) * 0.10
+                            elif "Dragones" in clean_m: prob_base = 0.50 + (exp_drg - lin) * 0.15
+                            elif "Barones" in clean_m: prob_base = 0.50 + (exp_bar - lin) * 0.25
+                            elif "Duración" in clean_m: prob_base = 0.50 + (exp_time - lin) * 0.05
+                            else: prob_base = motor_moba(wr1, wr2, clean_m, op_sel, lin, t1['name'])
+                        else:
+                            prob_base = motor_moba(wr1, wr2, clean_m, op_sel, lin, t1['name'])
                              
                         if "Menos" in op_sel or "NO" in op_sel: prob_base = 1 - prob_base
                         prob_final = max(0.05, min(0.95, prob_base))
@@ -380,39 +413,35 @@ else:
     </div>
     <div class="boveda-row">
         <div class="w-col-1">🗼 TORRES (12.5)</div> 
-        <div class="w-col-2">{n1}: <b>{tow1:.1f}</b><br>{n2}: <b>{tow2:.1f}</b></div>
-        <div class="w-col-3"><span class="w-pred">{op_torres} ({p_torres*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_torres:.2f}</span></div>
+        <div class="w-col-2">{n1}: <b>{html_tow1}</b><br>{n2}: <b>{html_tow2}</b></div>
+        <div class="w-col-3">{html_res_tow}</div>
     </div>
     <div class="boveda-row">
         <div class="w-col-1">🐉 DRAGONES (4.5)</div> 
-        <div class="w-col-2">{n1}: <b>{drg1:.1f}</b><br>{n2}: <b>{drg2:.1f}</b></div>
-        <div class="w-col-3"><span class="w-pred">{op_drag} ({p_drag*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_drag:.2f}</span></div>
+        <div class="w-col-2">{n1}: <b>{html_drg1}</b><br>{n2}: <b>{html_drg2}</b></div>
+        <div class="w-col-3">{html_res_drg}</div>
     </div>
     <div class="boveda-row">
         <div class="w-col-1">👾 BARONES (1.5)</div> 
-        <div class="w-col-2">{n1}: <b>{bar1:.1f}</b><br>{n2}: <b>{bar2:.1f}</b></div>
-        <div class="w-col-3"><span class="w-pred">{op_bar} ({p_bar*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_bar:.2f}</span></div>
+        <div class="w-col-2">{n1}: <b>{html_bar1}</b><br>{n2}: <b>{html_bar2}</b></div>
+        <div class="w-col-3">{html_res_bar}</div>
     </div>
     <div class="boveda-row">
         <div class="w-col-1">⚔️ TOTAL KILLS (28.5)</div> 
-        <div class="w-col-2">{n1}: <b>{k1:.1f}</b><br>{n2}: <b>{k2:.1f}</b></div>
-        <div class="w-col-3"><span class="w-pred">{op_kills} ({p_kills*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_kills:.2f}</span></div>
+        <div class="w-col-2">{n1}: <b>{html_k1}</b><br>{n2}: <b>{html_k2}</b></div>
+        <div class="w-col-3">{html_res_kil}</div>
     </div>
     <div class="boveda-row" style="border-bottom: none;">
         <div class="w-col-1">⏱️ TIEMPO P. (32.5)</div> 
-        <div class="w-col-2">{n1}: <b>{time1:.1f}m</b><br>{n2}: <b>{time2:.1f}m</b></div>
-        <div class="w-col-3"><span class="w-pred">{op_tiempo} ({p_tiempo*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_tiempo:.2f}</span></div>
-    </div>
-    <div style="display: flex; justify-content: space-between;">
-        <div class="player-box">⭐ MVP Simul: Capitán<br>KDA: 4.8 | Main: Azir</div>
-        <div class="player-box">⭐ MVP Simul: Capitán<br>KDA: 5.1 | Main: Lee Sin</div>
+        <div class="w-col-2">{n1}: <b>{html_time1}</b><br>{n2}: <b>{html_time2}</b></div>
+        <div class="w-col-3">{html_res_tim}</div>
     </div>
 </div>
 """
                 st.markdown(html_boveda, unsafe_allow_html=True)
 
         else:
-            # INTERFAZ PARA DOTA 2 Y DEMÁS JUEGOS (INTACTA Y EN 1 COLUMNA)
+            # INTERFAZ PARA DOTA 2 Y DEMÁS JUEGOS
             wr1, form1 = fetch_historical_data_general(slug, t1['id'])
             wr2, form2 = fetch_historical_data_general(slug, t2['id'])
             st.markdown(f"""
