@@ -307,4 +307,85 @@ else:
             else:
                 sd_html = f'<span style="color:{c_sub}; font-weight:bold;">S/D</span>'
                 res_fb = res_tow = res_drg = res_bar = res_kil = res_tim = sd_html
-                k1 = k2 = tow1 = tow2 = drg1 = drg2 = bar1 = bar2 =
+                k1 = k2 = tow1 = tow2 = drg1 = drg2 = bar1 = bar2 = time1 = time2 = "S/D"
+
+            st.markdown(f"""<div class="glass-card">
+                <div style="margin-bottom: 15px; font-size: 13px; display: flex; justify-content: space-between;"><span>🏆 {league_name}</span>{badge}</div>
+                <div style="display: flex; justify-content: space-around; align-items: center; text-align: center;">
+                    <div style="width: 40%;"><div style="font-size:15px; font-weight:bold;">{t1['name']}</div><img src="{t1.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr1*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form1])}</div></div>
+                    <div style="font-size: 26px; font-weight: bold; color: {c_acc};">VS</div>
+                    <div style="width: 40%;"><div style="font-size:15px; font-weight:bold;">{t2['name']}</div><img src="{t2.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr2*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form2])}</div></div>
+                </div>
+                {boton_stream}
+            </div>""", unsafe_allow_html=True)
+            
+            if vista_global == "📡 MODO RADAR (Operar)":
+                with st.expander(f"⚙️ Panel Quant: {t1['name']} vs {t2['name']}"):
+                    mercados = ["-- Seleccione --", "⭐ PARTIDO: Ganador", "🗼 Total Torres", "🐉 Total Dragones", "👾 Total Barones", "⚔️ Total Kills", "⏱️ Duración", "🩸 Primera Sangre"]
+                    sel_m = st.selectbox("Mercado", mercados, key=f"m_{i}")
+                    if sel_m != "-- Seleccione --":
+                        if "Total" in sel_m or "Duración" in sel_m: op_sel = st.radio("Opción:", ["Más (+)", "Menos (-)"], key=f"o_{i}")
+                        else: op_sel = st.radio("A favor de:", [t1['name'], t2['name']], key=f"o_{i}")
+                        c_l, c_c = st.columns(2)
+                        cuo = c_c.number_input("Cuota Casino", value=1.00, step=0.01, key=f"c_{i}")
+                        prob_base = motor_moba(wr1, wr2, sel_m, op_sel, 0, t1['name'])
+                        st.markdown(f"""<div class="prob-box"><div style="font-size:12px;">Probabilidad</div><div class="prob-number">{prob_base*100:.1f}%</div><div style="font-size:10px;">C.Mín: {1/prob_base:.2f}</div></div>""", unsafe_allow_html=True)
+
+            elif vista_global == "📊 MODO BÓVEDA (Tablas Premium)":
+                n1, n2 = t1['name'][:10], t2['name'][:10]
+                st.markdown(f"""<div class="boveda-board">
+                    <div class="league-title">🏆 {league_name}</div>
+                    <div class="boveda-row"><div class="w-col-1">⭐ GANADOR</div><div class="w-col-2">{n1}: {wr1*100:.0f}%<br>{n2}: {wr2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">{eq_gan} ({p_gan_max*100:.0f}%)</span><br><span class="w-cota">C.Mín: {1/p_gan_max:.2f}</span></div></div>
+                    <div class="boveda-row"><div class="w-col-1">🩸 1RA SANGRE</div><div class="w-col-2">Historial ZIP<br>H2H Real</div><div class="w-col-3">{res_fb}</div></div>
+                    <div class="boveda-row"><div class="w-col-1">🗼 TORRES (12.5)</div><div class="w-col-2">{n1}: {tow1 if not has_data else f"{tow1:.1f}"}<br>{n2}: {tow2 if not has_data else f"{tow2:.1f}"}</div><div class="w-col-3">{res_tow}</div></div>
+                    <div class="boveda-row"><div class="w-col-1">🐉 DRAGONES (4.5)</div><div class="w-col-2">{n1}: {drg1 if not has_data else f"{drg1:.1f}"}<br>{n2}: {drg2 if not has_data else f"{drg2:.1f}"}</div><div class="w-col-3">{res_drg}</div></div>
+                    <div class="boveda-row"><div class="w-col-1">👾 BARONES (1.5)</div><div class="w-col-2">{n1}: {bar1 if not has_data else f"{bar1:.1f}"}<br>{n2}: {bar2 if not has_data else f"{bar2:.1f}"}</div><div class="w-col-3">{res_bar}</div></div>
+                    <div class="boveda-row"><div class="w-col-1">⚔️ TOTAL KILLS (28.5)</div><div class="w-col-2">{n1}: {k1 if not has_data else f"{k1:.1f}"}<br>{n2}: {k2 if not has_data else f"{k2:.1f}"}</div><div class="w-col-3">{res_kil}</div></div>
+                    <div class="boveda-row" style="border-bottom: none;"><div class="w-col-1">⏱️ TIEMPO (32.5)</div><div class="w-col-2">{n1}: {time1 if not has_data else f"{time1:.1f}m"}<br>{n2}: {time2 if not has_data else f"{time2:.1f}m"}</div><div class="w-col-3">{res_tim}</div></div>
+                </div>""", unsafe_allow_html=True)
+
+        else:
+            # INTERFAZ PARA OTROS JUEGOS
+            wr1, form1 = fetch_historical_data_general(slug, t1['id'])
+            wr2, form2 = fetch_historical_data_general(slug, t2['id'])
+            st.markdown(f"""<div class="glass-card">
+                <div style="margin-bottom: 15px; font-size: 13px; display: flex; justify-content: space-between;"><span>🏆 {league_name}</span>{badge}</div>
+                <div style="display: flex; justify-content: space-around; align-items: center; text-align: center;">
+                    <div style="width: 40%;"><div style="font-size:15px; font-weight:bold;">{t1['name']}</div><img src="{t1.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr1*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form1])}</div></div>
+                    <div style="font-size: 26px; font-weight: bold; color: {c_acc};">VS</div>
+                    <div style="width: 40%;"><div style="font-size:15px; font-weight:bold;">{t2['name']}</div><img src="{t2.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr2*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form2])}</div></div>
+                </div>
+                {boton_stream}
+            </div>""", unsafe_allow_html=True)
+            
+            with st.expander("⚙️ Operar Mercado Quant"):
+                if juego_sel == "Mobile Legends": mercados_g = ["Ganador", "Handicap", "Primera Sangre", "Carrera a 10 Kills", "Total Kills", "Duración"]
+                else: mercados_g = ["Ganador", "Handicap", "Total Kills", "Primera Sangre", "Carrera a 10 Kills"]
+                sel_m = st.selectbox("Mercado", mercados_g, key=f"mg_{i}")
+                
+                if "Total" in sel_m or "Duración" in sel_m: op_sel = st.radio("Opción:", ["Más (+)", "Menos (-)"], key=f"og_{i}")
+                else: op_sel = st.radio("A favor de:", [t1['name'], t2['name']], key=f"og_{i}")
+                
+                c_l, c_c = st.columns(2)
+                lin = c_l.number_input("Línea", value=0.0, step=0.5, key=f"lg_{i}")
+                cuo = c_c.number_input("Cuota", value=1.00, step=0.01, key=f"cg_{i}")
+                
+                prob_base = motor_moba(wr1, wr2, sel_m, op_sel, lin, t1['name']) if cat == "⚔️ MOBAs" else motor_fps(wr1, wr2, sel_m, op_sel, lin, t1['name'])
+                prob_final = max(0.05, min(0.95, prob_base))
+                
+                st.markdown(f"""<div class="prob-box"><div style="font-size:12px;">Probabilidad Final</div><div class="prob-number">{prob_final*100:.1f}%</div><div style="font-size:12px;">Cuota Mín: {1/prob_final:.2f}</div></div>""", unsafe_allow_html=True)
+
+                if cuo > 1.01 and cuo > (1/prob_final):
+                    stake = ((((cuo - 1) * prob_final) - (1 - prob_final)) / (cuo - 1)) * 0.25 * bank_actual
+                    if stake > 0:
+                        st.success(f"🔥 Sugerido: {stake:.2f} U")
+                        if st.button("REGISTRAR", key=f"regg_{i}"):
+                            gestionar_bank(bank_actual - stake)
+                            gestionar_historial(nueva_op={
+                                "Fecha": (datetime.utcnow()-timedelta(hours=4)).strftime('%Y-%m-%d %H:%M:%S'),
+                                "Juego": juego_sel, "Partido": f"{t1['name']} vs {t2['name']}",
+                                "Mercado": sel_m, "Opcion": op_sel, "Cuota": cuo,
+                                "Inversion": round(stake, 2), "Estado": "PENDIENTE",
+                                "MatchID": m['id'], "TeamID": t1['id'] if t1['name'] in op_sel else t2['id']
+                            })
+                            st.rerun()
