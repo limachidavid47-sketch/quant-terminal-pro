@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN
 # ==========================================
-st.set_page_config(page_title="Quant Elite V36.2", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V36.3", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -26,8 +26,8 @@ def check_password():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V36.2</div>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>UI DUAL: PESTAÑAS 100% GARANTIZADAS</p>", unsafe_allow_html=True)
+        st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V36.3</div>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>ESTABILIDAD TOTAL Y PESTAÑAS BLINDADAS</p>", unsafe_allow_html=True)
         with st.form("login_form"):
             u = st.text_input("Operador")
             p = st.text_input("Clave", type="password")
@@ -149,7 +149,7 @@ def motor_fps(wr1, wr2, mercado, opcion, linea, t1_name):
     return max(0.05, min(0.95, prob))
 
 # ==========================================
-# 4. TEMAS Y CSS 
+# 4. TEMAS Y CSS (LIMPIEZA DE BUGS)
 # ==========================================
 st.sidebar.markdown("### 🎨 Apariencia")
 tema = st.sidebar.selectbox("", ["Azul Oscuro (Defecto)", "Verde Hacker", "Rojo Táctico"])
@@ -157,6 +157,7 @@ colors = {"Azul Oscuro (Defecto)": ("#0B1120", "#1E293B", "#F1F5F9", "#38BDF8"),
 c_bg, c_card, c_text, c_acc = colors[tema]
 c_sub, c_border, c_btn = "#94A3B8", "#334155", "#0F172A"
 
+# NOTA: CSS de pestañas eliminado para garantizar visibilidad nativa en Streamlit.
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {c_bg}; color: {c_text}; font-family: 'Inter', sans-serif; }}
@@ -205,7 +206,7 @@ if not df_ops.empty:
             if c_p.button("❌", key=f"l_{idx}"): gestionar_historial(index_update=idx, nuevo_estado="PERDIDA"); st.rerun()
 
 # ==========================================
-# 6. RADAR Y SISTEMA DUAL (PESTAÑAS GARANTIZADAS)
+# 6. RADAR PRINCIPAL
 # ==========================================
 st.sidebar.markdown("---")
 cat = st.sidebar.radio("Disciplina", ["⚔️ MOBAs", "🔫 Shooters"])
@@ -248,7 +249,6 @@ else:
         boton_stream = f'<a href="{stream_link}" target="_blank" class="stream-btn">📺 Ver Transmisión en Vivo</a>' if stream_link else ''
         league_name = m['league']['name']
 
-        # RENDERIZADO POR COLUMNA
         with (c1 if i % 2 == 0 else c2):
             
             if juego_sel == "League of Legends":
@@ -276,7 +276,7 @@ else:
                 p_drag, op_drag = get_tot(p_d_mas)
                 p_ambos, op_ambos = (p_ambos_si, "SÍ") if p_ambos_si >= 0.50 else (1 - p_ambos_si, "NO")
                 
-                # 1. LA TARJETA PRINCIPAL (Siempre visible)
+                # 1. TARJETA PRINCIPAL (Siempre Arriba)
                 st.markdown(f"""
                 <div class="glass-card">
                     <div style="margin-bottom: 10px; font-size: 11px; display: flex; justify-content: space-between;"><span>🏆 {league_name}</span>{badge}</div>
@@ -289,75 +289,76 @@ else:
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # 2. LAS PESTAÑAS GARANTIZADAS
-                tab_vivo, tab_historial = st.tabs(["⚙️ OPERAR (Radar)", "📊 HISTORIAL (Bóveda)"])
-                
-                with tab_vivo:
-                    mercados = ["-- Seleccione --", "⭐ PARTIDO: Ganador", "🗼 Total Torres", "🐉 Total Dragones", "👾 Total Barones", "⚔️ Total Kills", "⏱️ Duración", "🤝 Ambos Asesinan Dragón", "🩸 Primera Sangre", "⚖️ Handicap"]
-                    sel_m = st.selectbox("Mercado", mercados, key=f"m_{i}")
-                    clean_m = sel_m.replace("🔥 ", "").replace("❄️🔥 ", "") 
+                # 2. EL CONTENEDOR SEGURO: EXPANDER + PESTAÑAS
+                with st.expander(f"⚙️ Panel Quant: {t1['name']} vs {t2['name']}"):
+                    tab_vivo, tab_historial = st.tabs(["📡 EN VIVO", "📊 HISTORIAL PROMEDIO"])
                     
-                    if clean_m != "-- Seleccione --":
-                        if "Total" in clean_m or "Duración" in clean_m: op_sel = st.radio("Opción:", ["Más (+)", "Menos (-)"], key=f"o_{i}")
-                        elif "Ambos" in clean_m: op_sel = st.radio("Opción:", ["SÍ", "NO"], key=f"o_{i}")
-                        else: op_sel = st.radio("A favor de:", [t1['name'], t2['name']], key=f"o_{i}")
+                    with tab_vivo:
+                        mercados = ["-- Seleccione --", "⭐ PARTIDO: Ganador", "🗼 Total Torres", "🐉 Total Dragones", "👾 Total Barones", "⚔️ Total Kills", "⏱️ Duración", "🤝 Ambos Asesinan Dragón", "🩸 Primera Sangre", "⚖️ Handicap"]
+                        sel_m = st.selectbox("Mercado", mercados, key=f"m_{i}")
+                        clean_m = sel_m.replace("🔥 ", "").replace("❄️🔥 ", "") 
                         
-                        def_l = 12.5 if "Torres" in clean_m else 4.5 if "Dragones" in clean_m else 1.5 if "Barones" in clean_m else 28.5 if "Kills" in clean_m else 32.5 if "Duración" in clean_m else 0.0
-                        c_l, c_c = st.columns(2)
-                        lin = c_l.number_input("Línea Flexible", value=def_l, key=f"l_{i}")
-                        cuo = c_c.number_input("Cuota Casino", value=1.00, step=0.01, key=f"c_{i}")
+                        if clean_m != "-- Seleccione --":
+                            if "Total" in clean_m or "Duración" in clean_m: op_sel = st.radio("Opción:", ["Más (+)", "Menos (-)"], key=f"o_{i}")
+                            elif "Ambos" in clean_m: op_sel = st.radio("Opción:", ["SÍ", "NO"], key=f"o_{i}")
+                            else: op_sel = st.radio("A favor de:", [t1['name'], t2['name']], key=f"o_{i}")
+                            
+                            def_l = 12.5 if "Torres" in clean_m else 4.5 if "Dragones" in clean_m else 1.5 if "Barones" in clean_m else 28.5 if "Kills" in clean_m else 32.5 if "Duración" in clean_m else 0.0
+                            c_l, c_c = st.columns(2)
+                            lin = c_l.number_input("Línea Flexible", value=def_l, key=f"l_{i}")
+                            cuo = c_c.number_input("Cuota Casino", value=1.00, step=0.01, key=f"c_{i}")
 
-                        if "Kills" in clean_m: prob_base = 0.50 + (exp_k - lin) * 0.03
-                        elif "Torres" in clean_m: prob_base = 0.50 + (exp_tow - lin) * 0.10
-                        elif "Dragones" in clean_m: prob_base = 0.50 + (exp_drg - lin) * 0.15
-                        elif "Duración" in clean_m: prob_base = 0.50 + (exp_time - lin) * 0.05
-                        elif "Ambos" in clean_m: prob_base = 0.50 + (exp_drg - 4.5) * 0.10
-                        else: prob_base = motor_moba(wr1, wr2, clean_m, op_sel, lin, t1['name'])
-                             
-                        if "Menos" in op_sel or "NO" in op_sel: prob_base = 1 - prob_base
-                        prob_final = max(0.05, min(0.95, prob_base))
-                        
-                        st.markdown(f"""<div class="prob-box"><div style="font-size:10px;">Probabilidad</div><div class="prob-number">{prob_final*100:.1f}%</div><div style="font-size:10px;">C.Mín: {1/prob_final:.2f}</div></div>""", unsafe_allow_html=True)
-                        if cuo > 1.01 and cuo > (1/prob_final):
-                            stake = ((((cuo - 1) * prob_final) - (1 - prob_final)) / (cuo - 1)) * 0.25 * bank_actual
-                            if stake > 0:
-                                st.success(f"🔥 Sugerido: {stake:.2f} U"); 
-                                if st.button("REGISTRAR", key=f"reg_{i}"): gestionar_bank(bank_actual - stake); st.rerun()
+                            if "Kills" in clean_m: prob_base = 0.50 + (exp_k - lin) * 0.03
+                            elif "Torres" in clean_m: prob_base = 0.50 + (exp_tow - lin) * 0.10
+                            elif "Dragones" in clean_m: prob_base = 0.50 + (exp_drg - lin) * 0.15
+                            elif "Duración" in clean_m: prob_base = 0.50 + (exp_time - lin) * 0.05
+                            elif "Ambos" in clean_m: prob_base = 0.50 + (exp_drg - 4.5) * 0.10
+                            else: prob_base = motor_moba(wr1, wr2, clean_m, op_sel, lin, t1['name'])
+                                 
+                            if "Menos" in op_sel or "NO" in op_sel: prob_base = 1 - prob_base
+                            prob_final = max(0.05, min(0.95, prob_base))
+                            
+                            st.markdown(f"""<div class="prob-box"><div style="font-size:10px;">Probabilidad</div><div class="prob-number">{prob_final*100:.1f}%</div><div style="font-size:10px;">C.Mín: {1/prob_final:.2f}</div></div>""", unsafe_allow_html=True)
+                            if cuo > 1.01 and cuo > (1/prob_final):
+                                stake = ((((cuo - 1) * prob_final) - (1 - prob_final)) / (cuo - 1)) * 0.25 * bank_actual
+                                if stake > 0:
+                                    st.success(f"🔥 Sugerido: {stake:.2f} U"); 
+                                    if st.button("REGISTRAR", key=f"reg_{i}"): gestionar_bank(bank_actual - stake); st.rerun()
 
-                with tab_historial:
-                    st.markdown(f"""
-                    <div class="white-board">
-                        <div class="league-title">🏆 {league_name}</div>
-                        
-                        <div style="display: flex; justify-content: space-around; align-items: center; margin-bottom: 20px;">
-                            <div style="text-align: center; width: 30%;">
-                                <img src="{t1.get('image_url','')}" class="team-logo-small"><br>
-                                <b style="color:#0F172A;">{t1['name']}</b><br><span style="color:#2563EB;">WR: {wr1*100:.0f}%</span>
+                    with tab_historial:
+                        st.markdown(f"""
+                        <div class="white-board">
+                            <div class="league-title">🏆 {league_name}</div>
+                            
+                            <div style="display: flex; justify-content: space-around; align-items: center; margin-bottom: 20px;">
+                                <div style="text-align: center; width: 30%;">
+                                    <img src="{t1.get('image_url','')}" class="team-logo-small"><br>
+                                    <b style="color:#0F172A;">{t1['name']}</b><br><span style="color:#2563EB;">WR: {wr1*100:.0f}%</span>
+                                </div>
+                                <div style="font-weight: 900; color: #94A3B8; font-size: 14px;">PROMEDIO COMBINADO</div>
+                                <div style="text-align: center; width: 30%;">
+                                    <img src="{t2.get('image_url','')}" class="team-logo-small"><br>
+                                    <b style="color:#0F172A;">{t2['name']}</b><br><span style="color:#2563EB;">WR: {wr2*100:.0f}%</span>
+                                </div>
                             </div>
-                            <div style="font-weight: 900; color: #94A3B8; font-size: 14px;">PROMEDIO COMBINADO</div>
-                            <div style="text-align: center; width: 30%;">
-                                <img src="{t2.get('image_url','')}" class="team-logo-small"><br>
-                                <b style="color:#0F172A;">{t2['name']}</b><br><span style="color:#2563EB;">WR: {wr2*100:.0f}%</span>
+
+                            <div class="white-row"><div>⭐ GANADOR</div> <div class="white-center">{eq_gan} ({p_gan_max*100:.0f}%) | C.Mín: {1/p_gan_max:.2f}</div></div>
+                            <div class="white-row"><div>🗼 TORRES T.</div> <div class="white-center">{op_torres} 12.5 | Prom: {exp_tow:.1f} ({p_torres*100:.0f}%)</div></div>
+                            <div class="white-row"><div>🐉 DRAGONES T.</div> <div class="white-center">{op_drag} 4.5 | Prom: {exp_drg:.1f} ({p_drag*100:.0f}%)</div></div>
+                            <div class="white-row"><div>👾 BARONES T.</div> <div class="white-center">{op_drag} 1.5 | Estim: 1.8 ({p_drag*100:.0f}%)</div></div>
+                            <div class="white-row"><div>⚔️ TOTAL KILLS</div> <div class="white-center">{op_kills} 28.5 | Prom: {exp_k:.1f} ({p_kills*100:.0f}%)</div></div>
+                            <div class="white-row"><div>⏱️ TIEMPO P.</div> <div class="white-center">{op_tiempo} 32.5 | Prom: {exp_time:.1f}m ({p_tiempo*100:.0f}%)</div></div>
+                            <div class="white-row"><div>🩸 1RA SANGRE</div> <div class="white-center">{eq_gan} ({0.5+((p_gan_max-0.5)*0.7)*100:.0f}%)</div></div>
+                            
+                            <div style="display: flex; justify-content: space-between;">
+                                <div class="player-box">⭐ MVP Simul: Capitán<br>KDA: 4.8 | Main: Azir</div>
+                                <div class="player-box">⭐ MVP Simul: Capitán<br>KDA: 5.1 | Main: Lee Sin</div>
                             </div>
                         </div>
-
-                        <div class="white-row"><div>⭐ GANADOR</div> <div class="white-center">{eq_gan} ({p_gan_max*100:.0f}%) | C.Mín: {1/p_gan_max:.2f}</div></div>
-                        <div class="white-row"><div>🗼 TORRES T.</div> <div class="white-center">{op_torres} 12.5 | Prom: {exp_tow:.1f} ({p_torres*100:.0f}%)</div></div>
-                        <div class="white-row"><div>🐉 DRAGONES T.</div> <div class="white-center">{op_drag} 4.5 | Prom: {exp_drg:.1f} ({p_drag*100:.0f}%)</div></div>
-                        <div class="white-row"><div>👾 BARONES T.</div> <div class="white-center">{op_drag} 1.5 | Estim: 1.8 ({p_drag*100:.0f}%)</div></div>
-                        <div class="white-row"><div>⚔️ TOTAL KILLS</div> <div class="white-center">{op_kills} 28.5 | Prom: {exp_k:.1f} ({p_kills*100:.0f}%)</div></div>
-                        <div class="white-row"><div>⏱️ TIEMPO P.</div> <div class="white-center">{op_tiempo} 32.5 | Prom: {exp_time:.1f}m ({p_tiempo*100:.0f}%)</div></div>
-                        <div class="white-row"><div>🩸 1RA SANGRE</div> <div class="white-center">{eq_gan} ({0.5+((p_gan_max-0.5)*0.7)*100:.0f}%)</div></div>
-                        
-                        <div style="display: flex; justify-content: space-between;">
-                            <div class="player-box">⭐ MVP Simul: Capitán<br>KDA: 4.8 | Main: Azir</div>
-                            <div class="player-box">⭐ MVP Simul: Capitán<br>KDA: 5.1 | Main: Lee Sin</div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
 
             else:
-                # INTERFAZ PARA DOTA 2 Y DEMÁS JUEGOS (INTACTA CON SU PROPIO EXPANDER)
+                # INTERFAZ PARA DOTA 2 Y DEMÁS JUEGOS (INTACTA)
                 wr1, form1 = fetch_historical_data_general(slug, t1['id'])
                 wr2, form2 = fetch_historical_data_general(slug, t2['id'])
                 st.markdown(f"""
