@@ -6,9 +6,9 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 # ==========================================
-# 1. SEGURIDAD Y CONFIGURACIÓN (V77.1)
+# 1. SEGURIDAD Y CONFIGURACIÓN (V78.2)
 # ==========================================
-st.set_page_config(page_title="Quant Elite V77.1", layout="centered", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V78.2", layout="centered", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -24,8 +24,8 @@ def check_password():
     """, unsafe_allow_html=True)
     
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V77.1</div>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>MOTOR M.C.P. SANEADO | CERO FUGAS</p>", unsafe_allow_html=True)
+    st.markdown("<div class='login-title'>⚡ QUANT TERMINAL V78.2</div>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B; margin-bottom:20px; text-align: center;'>MOTOR M.C.P. | BUSCADOR INTELIGENTE | BLINDAJE TOTAL</p>", unsafe_allow_html=True)
     with st.form("login_form"):
         u = st.text_input("Operador")
         p = st.text_input("Clave", type="password")
@@ -75,7 +75,7 @@ def call_api_live(game_slug, endpoint, params_str=""):
     except: return []
 
 # ==========================================
-# 3. EL CEREBRO QUANT V77.1
+# 3. EL CEREBRO QUANT V78.2
 # ==========================================
 @st.cache_data(ttl=21600, show_spinner=False)
 def fetch_historical_data_general(game_slug, team_id):
@@ -92,38 +92,40 @@ def fetch_historical_data_general(game_slug, team_id):
 
 def get_fallback_stats(team_id):
     wr, form = fetch_historical_data_general("lol", team_id)
-    return wr, form, 0, 0, 0, 0, 0, 0, 0, {}, 0, 0
+    return wr, form, 0, 0, 0, 0, 0, 0, 0, {}, 0, 0, 0.5, 0.0
 
 @st.cache_data(ttl=28800, show_spinner=False)
 def load_oracle_database():
     columnas_clave = ['teamname', 'position', 'date', 'result', 'teamkills', 'towers', 'opp_towers', 'dragons', 'barons', 'firstblood', 'gamelength', 'playername', 'ckpm', 'golddiffat15']
     
-    if os.path.exists("datos_oracle.zip"):
-        try:
-            df = pd.read_csv("datos_oracle.zip", compression='zip', usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
-            df.columns = df.columns.str.strip().str.lower()
-            return df, "OK (Leído desde ZIP Local)"
-        except:
+    archivos_locales = os.listdir('.')
+    
+    # 1. Buscador inteligente de CSV
+    for archivo in archivos_locales:
+        if archivo.endswith('.csv') and ('oracle' in archivo.lower() or 'lol' in archivo.lower()):
             try:
-                df = pd.read_csv("datos_oracle.zip", usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
+                df = pd.read_csv(archivo, usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
                 df.columns = df.columns.str.strip().str.lower()
-                return df, "OK (Leído desde ZIP como CSV)"
+                return df, f"OK (Leído CSV local: {archivo})"
+            except: pass
+            
+    # 2. Buscador inteligente de ZIP
+    for archivo in archivos_locales:
+        if archivo.endswith('.zip') and ('oracle' in archivo.lower() or 'lol' in archivo.lower()):
+            try:
+                df = pd.read_csv(archivo, compression='zip', usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
+                df.columns = df.columns.str.strip().str.lower()
+                return df, f"OK (Leído ZIP local: {archivo})"
             except: pass
 
-    if os.path.exists("datos_oracle.csv"):
-        try:
-            df = pd.read_csv("datos_oracle.csv", usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
-            df.columns = df.columns.str.strip().str.lower()
-            return df, "OK (Leído desde CSV Local)"
-        except: pass
-
+    # 3. Red AWS
     try:
         url_aws = f"https://oracleselixir-downloadable-match-data.s3-us-west-2.amazonaws.com/{datetime.utcnow().year}_LoL_esports_match_data_from_OraclesElixir.csv"
         df = pd.read_csv(url_aws, usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
         df.columns = df.columns.str.strip().str.lower()
         return df, "OK (Descarga de Emergencia AWS)"
     except Exception as e:
-        return pd.DataFrame(), f"Error Fatal: No se encontró el archivo. {e}"
+        return pd.DataFrame(), f"Error Fatal: No encontré la base de datos. Por favor, extrae el archivo CSV en la misma carpeta."
 
 def get_team_stats(team_name, team_id, df_completo):
     if df_completo.empty: return get_fallback_stats(team_id)
@@ -135,13 +137,25 @@ def get_team_stats(team_name, team_id, df_completo):
     df_all_team = df_completo[df_completo['teamname'].str.lower().str.contains(core_name, na=False)]
     if df_all_team.empty: return get_fallback_stats(team_id)
 
-    # BUG 2 CORREGIDO: Uso de .copy() para evitar Warnings del Servidor
+    # 15 MAPAS para evitar espejismos
     df_team = df_all_team[df_all_team['position'] == 'team'].copy()
     df_team['date'] = pd.to_datetime(df_team['date'], errors='coerce')
-    df_team = df_team.sort_values(by='date', ascending=False).head(12) 
+    df_team = df_team.sort_values(by='date', ascending=False).head(15) 
     
     if df_team.empty: return get_fallback_stats(team_id)
     
+    # MOTOR DE RESILIENCIA Y CONVERSIÓN
+    if 'golddiffat15' in df_team.columns:
+        ahead = df_team[df_team['golddiffat15'] > 0]
+        wins_from_ahead = ahead[ahead['result'] == 1]
+        conv_rate = len(wins_from_ahead) / len(ahead) if len(ahead) > 0 else 0.50
+        
+        behind = df_team[df_team['golddiffat15'] <= 0]
+        wins_from_behind = behind[behind['result'] == 1]
+        comeback_rate = len(wins_from_behind) / len(behind) if len(behind) > 0 else 0.0
+    else:
+        conv_rate, comeback_rate = 0.50, 0.0
+
     df_players = df_all_team[df_all_team['position'] != 'team'].copy()
     df_players['date'] = pd.to_datetime(df_players['date'], errors='coerce')
     df_players = df_players.sort_values(by='date', ascending=False).head(120) 
@@ -151,7 +165,6 @@ def get_team_stats(team_name, team_id, df_completo):
         for pos in ['top', 'jng', 'mid', 'bot', 'sup']:
             df_pos = df_players[df_players['position'] == pos]
             if not df_pos.empty:
-                # BUG 3 CORREGIDO: Escudo contra listas vacías de nombres
                 mode_series = df_pos['playername'].mode()
                 p_name = mode_series.iloc[0] if ('playername' in df_pos.columns and not mode_series.empty) else "Unknown"
                 p_wr = df_pos[df_pos['playername'] == p_name]['result'].mean() if p_name != "Unknown" else 0.0
@@ -163,19 +176,18 @@ def get_team_stats(team_name, team_id, df_completo):
     winrate = wins / len(df_team) if len(df_team) > 0 else 0.50
     form = ['win' if r == 1 else 'loss' for r in df_team['result'].tolist()[:5]]
     
-    cols = df_team.columns
-    avg_kills = df_team['teamkills'].mean() if 'teamkills' in cols else 0
-    avg_towers = df_team['towers'].mean() if 'towers' in cols else 0
-    avg_opp_towers = df_team['opp_towers'].mean() if 'opp_towers' in cols else 0
-    avg_dragons = df_team['dragons'].mean() if 'dragons' in cols else 0
-    avg_barons = df_team['barons'].mean() if 'barons' in cols else 0
-    avg_fb = df_team['firstblood'].mean() if 'firstblood' in cols else 0
-    avg_time = (df_team['gamelength'].mean() / 60) if 'gamelength' in cols else 0
+    # BLINDAJE CONTRA COLUMNAS FALTANTES (Error KeyError Solucionado)
+    avg_kills = df_team['teamkills'].mean() if 'teamkills' in df_team.columns else 0
+    avg_towers = df_team['towers'].mean() if 'towers' in df_team.columns else 0
+    avg_opp_towers = df_team['opp_towers'].mean() if 'opp_towers' in df_team.columns else 0
+    avg_dragons = df_team['dragons'].mean() if 'dragons' in df_team.columns else 0
+    avg_barons = df_team['barons'].mean() if 'barons' in df_team.columns else 0
+    avg_fb = df_team['firstblood'].mean() if 'firstblood' in df_team.columns else 0
+    avg_time = (df_team['gamelength'].mean() / 60) if 'gamelength' in df_team.columns else 0
+    avg_ckpm = df_team['ckpm'].mean() if 'ckpm' in df_team.columns else 0
+    avg_gold15 = df_team['golddiffat15'].mean() if 'golddiffat15' in df_team.columns else 0
     
-    avg_ckpm = df_team['ckpm'].mean() if 'ckpm' in cols else 0
-    avg_gold15 = df_team['golddiffat15'].mean() if 'golddiffat15' in cols else 0
-    
-    return winrate, form, avg_kills, avg_towers, avg_opp_towers, avg_dragons, avg_barons, avg_fb, avg_time, roster, avg_ckpm, avg_gold15
+    return winrate, form, avg_kills, avg_towers, avg_opp_towers, avg_dragons, avg_barons, avg_fb, avg_time, roster, avg_ckpm, avg_gold15, conv_rate, comeback_rate
 
 def motor_moba(wr1, wr2, mercado, opcion, linea, t1_name):
     total_wr = wr1 + wr2 if (wr1+wr2)>0 else 1
@@ -226,7 +238,7 @@ st.markdown(f"""
     .badge-time {{ background: {c_acc}; color: {c_bg}; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; }}
     .stream-btn {{ background-color: #9146FF; color: white !important; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; display: block; margin-top: 20px; text-align: center; }}
     div.stButton > button {{ background-color: {c_btn}; color: {c_acc}; border: 1px solid {c_border}; font-weight: bold; border-radius: 8px; padding: 10px; width: 100%; transition: 0.3s; }}
-    
+    .alert-panel {{ background: #1E293B; border-left: 5px solid {c_acc}; padding: 10px 15px; border-radius: 5px; margin-bottom: 15px; font-size: 13px; font-weight: 600; }}
     .boveda-board {{ background-color: {c_card}; color: {c_text}; border: 2px solid {c_border}; border-radius: 14px; padding: 25px; margin-bottom: 25px; transition: 0.3s; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }}
     .league-title {{ text-align: center; font-weight: 900; font-size: 24px; margin-bottom: 25px; border-bottom: 2px solid {c_border}; padding-bottom: 15px; }}
     .boveda-row {{ display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid {c_border}; }}
@@ -235,9 +247,7 @@ st.markdown(f"""
     .w-col-3 {{ width: 30%; text-align: right; line-height: 1.5; }}
     .w-pred {{ font-weight: 900; color: {c_acc}; font-size: 14px; }}
     .w-cota {{ font-weight: 800; color: #EF4444; font-size: 11px; background: {c_btn}; padding: 3px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; border: 1px solid {c_border}; letter-spacing: 0.5px; }}
-    
     .sticky-panel {{ position: sticky; top: 0; z-index: 999; background-color: {c_bg}; padding: 10px 0; border-bottom: 1px solid {c_border}; }}
-
     div.row-widget.stRadio > div {{ flex-direction: row; justify-content: center; background: transparent; padding: 5px; }}
     div.row-widget.stRadio > div > label {{ font-size: 14px !important; font-weight: 800 !important; color: {c_text} !important; padding: 6px 15px; background: {c_btn}; border-radius: 6px; border: 1px solid {c_border}; cursor: pointer; margin: 0 5px; transition: 0.3s; }}
     div.row-widget.stRadio > div > label:hover {{ border-color: {c_acc}; }}
@@ -273,7 +283,7 @@ slug = juegos[juego_sel]
 if st.sidebar.button("🗑️ Forzar Actualización Datos", use_container_width=True): st.cache_data.clear(); st.rerun()
 
 # ==========================================
-# 6. RADAR PRINCIPAL V77.1
+# 6. RADAR PRINCIPAL V78.2
 # ==========================================
 st.markdown(f"<h2 style='color:{c_text}; text-align: center; margin-bottom: 10px;'>📡 Radar Quant: {juego_sel}</h2>", unsafe_allow_html=True)
 
@@ -290,9 +300,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 if juego_sel == "League of Legends":
     df_oracle, oracle_status = load_oracle_database()
-    if "OK" in oracle_status:
-        pass 
-    else:
+    if "OK" not in oracle_status:
         st.error(f"🚨 ALERTA DEL SISTEMA: {oracle_status}")
 
 running = call_api_live(slug, "matches/running", "per_page=20")
@@ -324,22 +332,19 @@ else:
         league_name = m['league']['name']
 
         if juego_sel == "League of Legends":
-            wr1, form1, k1, tow1, optow1, drg1, bar1, fb1, time1, roster1, ckpm1, gold1_15 = get_team_stats(t1['name'], t1['id'], df_oracle) 
-            wr2, form2, k2, tow2, optow2, drg2, bar2, fb2, time2, roster2, ckpm2, gold2_15 = get_team_stats(t2['name'], t2['id'], df_oracle) 
-            
-            # BUG 1 CORREGIDO: Equilibrio en la Fuga de Probabilidades
-            diff_oro_1 = gold1_15 - gold2_15
-            diff_oro_2 = gold2_15 - gold1_15
+            wr1, form1, k1, tow1, optow1, drg1, bar1, fb1, time1, roster1, ckpm1, gold1_15, conv1, comeback1 = get_team_stats(t1['name'], t1['id'], df_oracle) 
+            wr2, form2, k2, tow2, optow2, drg2, bar2, fb2, time2, roster2, ckpm2, gold2_15, conv2, comeback2 = get_team_stats(t2['name'], t2['id'], df_oracle) 
             
             p_gan_base1 = wr1 / (wr1+wr2 if (wr1+wr2)>0 else 1)
             p_gan_base2 = wr2 / (wr1+wr2 if (wr1+wr2)>0 else 1)
             
-            if diff_oro_1 > 800: 
-                p_gan_base1 += 0.15 
-                p_gan_base2 -= 0.15
-            elif diff_oro_2 > 800: 
-                p_gan_base2 += 0.15
-                p_gan_base1 -= 0.15
+            if gold1_15 > 0:
+                if conv1 > 0.60: p_gan_base1 += 0.08; p_gan_base2 -= 0.08
+                elif conv1 < 0.40: p_gan_base1 -= 0.05; p_gan_base2 += 0.05
+            
+            if gold2_15 > 0:
+                if conv2 > 0.60: p_gan_base2 += 0.08; p_gan_base1 -= 0.08
+                elif conv2 < 0.40: p_gan_base2 -= 0.05; p_gan_base1 += 0.05
             
             p_gan_max = max(p_gan_base1, p_gan_base2)
             p_gan_max = max(0.05, min(0.95, p_gan_max))
@@ -347,17 +352,34 @@ else:
             
             has_data = (k1 > 0 and k2 > 0)
             
+            st.markdown(f"""<div class="glass-card">
+                <div style="margin-bottom: 15px; font-size: 13px; display: flex; justify-content: space-between;"><span>🏆 {league_name}</span>{badge}</div>
+                <div style="display: flex; justify-content: space-around; align-items: center; text-align: center;">
+                    <div style="width: 40%;"><div style="font-size:15px; font-weight:bold;">{t1['name']}</div><img src="{t1.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr1*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form1])}</div></div>
+                    <div style="font-size: 26px; font-weight: bold; color: {c_acc};">VS</div>
+                    <div style="width: 40%;"><div style="font-size:15px; font-weight:bold;">{t2['name']}</div><img src="{t2.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr2*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form2])}</div></div>
+                </div>
+                {boton_stream}
+            </div>""", unsafe_allow_html=True)
+
+            if has_data:
+                alertas = ""
+                if comeback1 >= 0.30 and conv2 < 0.50: alertas += f"🔥 <b>ALERTA FÉNIX:</b> {t1['name']} promedia {comeback1*100:.0f}% de remontada. Si va perdiendo al min 15, INVERTIR a su favor.<br>"
+                if comeback2 >= 0.30 and conv1 < 0.50: alertas += f"🔥 <b>ALERTA FÉNIX:</b> {t2['name']} promedia {comeback2*100:.0f}% de remontada. Si va perdiendo al min 15, INVERTIR a su favor.<br>"
+                if conv1 < 0.40 and gold1_15 > 0: alertas += f"🚨 <b>FALSO FAVORITO:</b> {t1['name']} domina fase de líneas pero tira la ventaja. NO apostar por ellos en vivo si van ganando.<br>"
+                if conv2 < 0.40 and gold2_15 > 0: alertas += f"🚨 <b>FALSO FAVORITO:</b> {t2['name']} domina fase de líneas pero tira la ventaja. NO apostar por ellos en vivo si van ganando.<br>"
+                
+                if alertas:
+                    st.markdown(f"<div class='alert-panel'>🎯 RADAR EN VIVO:<br>{alertas}</div>", unsafe_allow_html=True)
+            
             if has_data:
                 p_fb_real = max(0.05, min(0.95, fb1 / (fb1 + fb2 if (fb1+fb2)>0 else 1)))
                 eq_fb = t1['name'] if fb1 >= fb2 else t2['name']
-                
                 exp_tow = ((tow1 + optow1) + (tow2 + optow2)) / 2
                 exp_k, exp_drg, exp_bar, exp_time = (k1+k2), (drg1+drg2), (bar1+bar2), (time1+time2)/2
                 
                 if exp_time < 31.5:
-                    p_d_mas = 0.05
-                    p_to_mas = 0.05
-                    p_b_mas = 0.05
+                    p_d_mas = 0.05; p_to_mas = 0.05; p_b_mas = 0.05
                 else:
                     p_d_mas = max(0.05, min(0.95, 0.50 + (exp_drg - 4.5) * 0.15))
                     p_to_mas = max(0.05, min(0.95, 0.50 + (exp_tow - 12.5) * 0.10))
@@ -373,13 +395,11 @@ else:
 
                 valid_wr1 = [x[1] for x in roster1.values() if x[0] != "S/D"]
                 avg_r_wr1 = sum(valid_wr1)/len(valid_wr1) if valid_wr1 else wr1
-                
                 valid_wr2 = [x[1] for x in roster2.values() if x[0] != "S/D"]
                 avg_r_wr2 = sum(valid_wr2)/len(valid_wr2) if valid_wr2 else wr2
                 
                 p_c5_base = motor_moba(avg_r_wr1, avg_r_wr2, "Carrera a 5", t1['name'], 0, t1['name'])
                 p_c10_base = motor_moba(avg_r_wr1, avg_r_wr2, "Carrera a 10", t1['name'], 0, t1['name'])
-                
                 p_c5 = max(0.05, min(0.95, p_c5_base))
                 p_c10 = max(0.05, min(0.95, p_c10_base))
 
@@ -388,7 +408,6 @@ else:
                 
                 res_c5 = f'<span class="w-pred">{eq_c5} ({max(p_c5, 1-p_c5)*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/max(p_c5, 1-p_c5):.2f}</span>'
                 res_c10 = f'<span class="w-pred">{eq_c10} ({max(p_c10, 1-p_c10)*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/max(p_c10, 1-p_c10):.2f}</span>'
-
                 res_fb = f'<span class="w-pred">{eq_fb} ({p_fb_real*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/p_fb_real:.2f}</span>'
                 res_tow = f'<span class="w-pred">{op_torres} ({p_torres*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/p_torres:.2f}</span>'
                 res_drg = f'<span class="w-pred">{op_drag} ({p_drag*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/p_drag:.2f}</span>'
@@ -400,21 +419,11 @@ else:
                 res_fb = res_tow = res_drg = res_bar = res_kil = res_tim = res_c5 = res_c10 = sd_html
                 k1 = k2 = tow1 = optow1 = tow2 = optow2 = drg1 = drg2 = bar1 = bar2 = time1 = time2 = "S/D"
 
-            st.markdown(f"""<div class="glass-card">
-                <div style="margin-bottom: 15px; font-size: 13px; display: flex; justify-content: space-between;"><span>🏆 {league_name}</span>{badge}</div>
-                <div style="display: flex; justify-content: space-around; align-items: center; text-align: center;">
-                    <div style="width: 40%;"><div style="font-size:15px; font-weight:bold;">{t1['name']}</div><img src="{t1.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr1*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form1])}</div></div>
-                    <div style="font-size: 26px; font-weight: bold; color: {c_acc};">VS</div>
-                    <div style="width: 40%;"><div style="font-size:15px; font-weight:bold;">{t2['name']}</div><img src="{t2.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr2*100:.0f}%</div><div>{"".join([f"<div class='tower-plate {x}'></div>" for x in form2])}</div></div>
-                </div>
-                {boton_stream}
-            </div>""", unsafe_allow_html=True)
-            
             if vista_global == "📡 MODO RADAR (Operar)":
                 with st.container(border=True):
                     st.markdown(f"<div style='font-size:12px; font-weight:900; color:{c_acc}; margin-bottom:10px; text-transform:uppercase;'>⚡ Panel de Cálculo y Riesgo</div>", unsafe_allow_html=True)
                     
-                    mercados = ["-- Seleccione --", "⭐ PARTIDO: Ganador", "🗼 Total Torres", "🐉 Total Dragones", "👾 Total Barones", "⚔️ Total Kills", "⏱️ Duración", "🩸 Primera Sangre", "🏁 Carrera a 5 Kills", "🏁 Carrera a 10 Kills"]
+                    mercados = ["-- Seleccione --", "⭐ PARTIDO: Ganador", "⚖️ Handicap de Mapas", "🗼 Total Torres", "🐉 Total Dragones", "👾 Total Barones", "⚔️ Total Kills", "⏱️ Duración", "🩸 Primera Sangre", "🏁 Carrera a 5 Kills", "🏁 Carrera a 10 Kills"]
                     
                     c_m1, c_m2 = st.columns(2)
                     sel_m = c_m1.selectbox("Mercado", mercados, key=f"m_{i}", label_visibility="collapsed")
@@ -429,17 +438,15 @@ else:
                         else: op_sel = c_m2.radio("A favor de:", [t1['name'], t2['name']], key=key_radio, horizontal=True, label_visibility="collapsed")
                         
                         c_l1, c_l2 = st.columns(2)
-                        def_l = 12.5 if "Torres" in sel_m else 4.5 if "Dragones" in sel_m else 1.5 if "Barones" in sel_m else 28.5 if "Kills" in sel_m else 32.5 if "Duración" in sel_m else 0.0
+                        def_l = -1.5 if "Handicap" in sel_m else 12.5 if "Torres" in sel_m else 4.5 if "Dragones" in sel_m else 1.5 if "Barones" in sel_m else 28.5 if "Kills" in sel_m else 32.5 if "Duración" in sel_m else 0.0
                         lin = c_l1.number_input("Línea Flexible", value=def_l, key=key_linea)
                         cuo = c_l2.number_input("Cuota del Casino", value=1.00, step=0.01, key=key_cuota)
                         
                         if has_data:
-                            if "Carrera" in sel_m:
-                                valid_w1 = [x[1] for x in roster1.values() if x[0] != "S/D"]
-                                roster_wr1 = sum(valid_w1)/len(valid_w1) if valid_w1 else wr1
-                                valid_w2 = [x[1] for x in roster2.values() if x[0] != "S/D"]
-                                roster_wr2 = sum(valid_w2)/len(valid_w2) if valid_w2 else wr2
-                                prob_base = motor_moba(roster_wr1, roster_wr2, sel_m, op_sel, lin, t1['name'])
+                            if "Carrera" in sel_m: prob_base = motor_moba(avg_r_wr1, avg_r_wr2, sel_m, op_sel, lin, t1['name'])
+                            elif "Handicap" in sel_m:
+                                prob_pura = p_gan_base1 if t1['name'] in op_sel else p_gan_base2
+                                prob_base = prob_pura - (abs(lin)*0.20) if lin < 0 else prob_pura + (abs(lin)*0.20)
                             elif "Kills" in sel_m and "Total" in sel_m: prob_base = 0.50 + (exp_k - lin) * 0.03
                             elif "Duración" in sel_m: prob_base = 0.50 + (exp_time - lin) * 0.05
                             elif "Sangre" in sel_m: prob_base = p_fb_real if t1['name'] in op_sel else (1 - p_fb_real)
@@ -483,7 +490,7 @@ else:
                 st.markdown(f"""<div class="boveda-board">
                     <div class="league-title">🏆 {league_name}</div>
                     <div class="boveda-row"><div class="w-col-1">⭐ GANADOR</div><div class="w-col-2">{n1}: {wr1*100:.0f}%<br>{n2}: {wr2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">{eq_gan} ({p_gan_max*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/p_gan_max:.2f}</span></div></div>
-                    <div class="boveda-row"><div class="w-col-1">🩸 1RA SANGRE</div><div class="w-col-2">Historial Directo<br>12 Mapas Real</div><div class="w-col-3">{res_fb}</div></div>
+                    <div class="boveda-row"><div class="w-col-1">🩸 1RA SANGRE</div><div class="w-col-2">Historial Directo<br>15 Mapas Real</div><div class="w-col-3">{res_fb}</div></div>
                     <div class="boveda-row"><div class="w-col-1">🏁 C. 5 KILLS</div><div class="w-col-2">Algoritmo Roster<br>(Rol a Rol)</div><div class="w-col-3">{res_c5}</div></div>
                     <div class="boveda-row"><div class="w-col-1">🏁 C. 10 KILLS</div><div class="w-col-2">Algoritmo Roster<br>(Rol a Rol)</div><div class="w-col-3">{res_c10}</div></div>
                     <div class="boveda-row"><div class="w-col-1">🗼 TORRES (12.5)</div><div class="w-col-2">{n1}: +{tow1 if not has_data else f"{tow1:.1f}"} / -{optow1 if not has_data else f"{optow1:.1f}"}<br>{n2}: +{tow2 if not has_data else f"{tow2:.1f}"} / -{optow2 if not has_data else f"{optow2:.1f}"}</div><div class="w-col-3">{res_tow}</div></div>
