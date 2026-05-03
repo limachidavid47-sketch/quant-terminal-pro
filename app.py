@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN CLOUD
 # ==========================================
-st.set_page_config(page_title="Quant Elite V88.0", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V88.1", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -20,8 +20,8 @@ def check_password():
     
     html_login = """
     <div style='background: #0F172A; border: 2px solid #10B981; border-radius: 20px; padding: 30px; margin-top: 5vh; box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); text-align: center;'>
-    <h2 style='color: #10B981; letter-spacing: 2px;'>⚡ QUANT TERMINAL V88.0</h2>
-    <p style='color:#64748B;'>MOTOR ESCALADO LOL | DOTA TRIFÁSICO | BLINDAJE ANTI-BUGS</p>
+    <h2 style='color: #10B981; letter-spacing: 2px;'>⚡ QUANT TERMINAL V88.1</h2>
+    <p style='color:#64748B;'>BÓVEDA PREMIUM LOL 2.0 | MIN 15 Y 25 VISIBLES | DOTA INTACTO</p>
     </div>
     """
     st.markdown(html_login.replace('\n', ' '), unsafe_allow_html=True)
@@ -231,7 +231,7 @@ def get_team_stats(team_name, team_id, df_completo):
 # ==========================================
 st.markdown("""<style>
     .stApp { background-color: #05080F; color: #F1F5F9; font-family: 'Inter', sans-serif; }
-    .glass-card { background: #0F172A; border: 1px solid #1E293B; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.5); }
+    .glass-card { background: #0F172A; border: 1px solid #1E293B; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.5); position: relative; transition: 0.3s; }
     .team-logo { width: 60px; height: 60px; object-fit: contain; margin-bottom: 5px; }
     .winrate-text { font-size: 14px; color: #38BDF8; font-weight: 900; background: #1E293B; padding: 4px 10px; border-radius: 10px; display: inline-block; margin-top: 5px; border: 1px solid #334155; }
     .tower-plate { width: 14px; height: 8px; border-radius: 2px; display: inline-block; margin:0 2px; }
@@ -241,10 +241,10 @@ st.markdown("""<style>
     .stream-btn { background-color: #9146FF; color: white !important; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: bold; display: block; margin-top: 20px; text-align: center; }
     .prob-box { background: #1E293B; padding: 15px; border-radius: 8px; border: 1px solid #38BDF8; text-align: center; }
     .prob-number { font-size: 32px; font-weight: 900; color: #38BDF8; }
-    .boveda-board { background-color: #0F172A; border: 1px solid #1E293B; border-radius: 14px; padding: 20px; margin-bottom: 20px; }
-    .boveda-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #1E293B; }
+    .boveda-board { background-color: #0F172A; border: 1px solid #1E293B; border-radius: 14px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+    .boveda-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #1E293B; }
     .w-col-1 { width: 30%; font-size: 13px; font-weight: bold; color: #94A3B8; }
-    .w-col-2 { width: 40%; text-align: center; font-size: 13px; }
+    .w-col-2 { width: 40%; text-align: center; font-size: 13px; background: #1E293B; padding: 6px; border-radius: 6px; }
     .w-col-3 { width: 30%; text-align: right; }
     .w-pred { font-weight: 900; color: #38BDF8; font-size: 14px; }
     .w-cota { font-weight: bold; color: #EF4444; font-size: 11px; background: #1E293B; padding: 3px 6px; border-radius: 4px; border: 1px solid #EF4444; display: inline-block; margin-top: 4px; }
@@ -254,7 +254,7 @@ st.markdown("""<style>
 # 6. SIDEBAR: CENTRO DE MANDO
 # ==========================================
 with st.sidebar:
-    st.markdown("<h2 style='text-align:center; color:#38BDF8;'>⚙️ V88.0 CORE</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; color:#38BDF8;'>⚙️ V88.1 CORE</h2>", unsafe_allow_html=True)
     st.markdown(f"<div style='text-align:center; background:#1E293B; padding:15px; border-radius:10px; border:1px solid #334155; margin-bottom:20px;'>Bankroll<br><span style='color:#10B981; font-weight:900; font-size:24px;'>{bank_actual} U</span></div>", unsafe_allow_html=True)
     
     juegos = {"League of Legends": "lol", "Dota 2": "dota2", "Valorant": "valorant", "Mobile Legends": "mlbb"}
@@ -297,7 +297,6 @@ else:
             
             badge = "<span class='badge-live'>🔴 EN VIVO</span>" if m['status'] == 'running' else f"<span class='badge-time'>📅 {(datetime.strptime(m['begin_at'], '%Y-%m-%dT%H:%M:%SZ') - timedelta(hours=4)).strftime('%d/%m %H:%M')}</span>"
             
-            # BLINDAJE DE STREAMS (SOLUCIÓN DEL ERROR ROJO)
             lista_streams = m.get('streams_list', [])
             video_url = lista_streams[0].get('raw_url', '#') if lista_streams and len(lista_streams) > 0 else '#'
             stream_html = f"<a href='{video_url}' target='_blank' class='stream-btn'>📺 Ver Transmisión</a>" if video_url != '#' else ""
@@ -314,7 +313,6 @@ else:
             placas_t1 = "".join([f"<span class='tower-plate {x}'></span>" for x in f1])
             placas_t2 = "".join([f"<span class='tower-plate {x}'></span>" for x in f2])
 
-            # BLINDAJE MARKDOWN HTML (REPLACE NEWLINES)
             html_tarjeta = f"""
             <div class="glass-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -363,7 +361,6 @@ else:
                     lin = c_l1.number_input("Línea Flexible", value=def_l, key=f"l_{i}")
                     cuo = c_l2.number_input("Cuota del Casino", value=1.00, step=0.01, key=f"c_{i}")
 
-                    # --- LÓGICAS MATEMÁTICAS INDEPENDIENTES ---
                     p_final = 0.50
                     if juego_label == "Dota 2":
                         e1, mid1, l1, avg_t1 = motor_dota_trifasico(t1['id'], m.get('id'))
@@ -385,10 +382,9 @@ else:
                             exp_time = (time1 + time2) / 2
                             exp_k = k1 + k2; exp_tow = tow1 + optow1; exp_drg = drg1 + drg2; exp_bar = bar1 + bar2
                             
-                            # MOTOR DE ESCALADO LOL (Choque de Estilos)
                             mod_time, mod_obj = 0, 0
-                            if come1 > 0.35 and come2 > 0.35: mod_time, mod_obj = 2.0, 1.5 # Late vs Late
-                            elif conv1 > 0.55 and conv2 > 0.55: mod_time, mod_obj = -2.0, -1.0 # Early vs Early
+                            if come1 > 0.35 and come2 > 0.35: mod_time, mod_obj = 2.0, 1.5 
+                            elif conv1 > 0.55 and conv2 > 0.55: mod_time, mod_obj = -2.0, -1.0 
                             
                             adj_time = exp_time + mod_time
                             adj_k = exp_k + (mod_obj * 2)
@@ -407,7 +403,6 @@ else:
                         p_gb = wr1 / (wr1+wr2) if t1['name'] in op_sel else wr2 / (wr1+wr2)
                         p_final = p_gb + 0.15 if "Handicap" in sel_m else p_gb
 
-                    # --------------------------------------------------
                     p_final = max(0.05, min(0.95, p_final))
                     c_justa = 1 / p_final
                     kelly = ((((cuo - 1) * p_final) - (1 - p_final)) / (cuo - 1)) * 0.25 * bank_actual if cuo > 1.01 else 0
@@ -434,6 +429,7 @@ else:
             t1, t2 = opp[0]['opponent'], opp[1]['opponent']
             league_name = m.get('league', {}).get('name', 'Competición')
             n1, n2 = t1['name'][:10], t2['name'][:10]
+            img1, img2 = t1.get('image_url', ''), t2.get('image_url', '')
             
             if juego_label == "Dota 2":
                 e1, mid1, l1, avg1 = motor_dota_trifasico(t1['id'], m.get('id'))
@@ -444,6 +440,11 @@ else:
                 html_boveda_dota = f"""
                 <div class="boveda-board">
                 <div class="league-title">🏆 {league_name}</div>
+                <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 20px;">
+                    <div style="text-align: right; width: 40%;"><b>{n1}</b> <img src="{img1}" style="width:30px; vertical-align:middle; margin-left:10px;"></div>
+                    <div style="width: 20%; text-align: center; font-weight: 900; color: #334155;">VS</div>
+                    <div style="text-align: left; width: 40%;"><img src="{img2}" style="width:30px; vertical-align:middle; margin-right:10px;"> <b>{n2}</b></div>
+                </div>
                 <div class="boveda-row"><div class="w-col-1">🛡️ EARLY (10 Kills)</div><div class="w-col-2">{n1}: {e1*100:.0f}%<br>{n2}: {e2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">FAV: {n1 if p_early>0.5 else n2}</span><br><span class="w-cota">COTA MÍN: {1/max(p_early, 1-p_early):.2f}</span></div></div>
                 <div class="boveda-row" style="border-bottom:none;"><div class="w-col-1">🏰 LATE (Ganador)</div><div class="w-col-2">{n1}: {l1*100:.0f}%<br>{n2}: {l2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">FAV: {n1 if p_late>0.5 else n2}</span><br><span class="w-cota">COTA MÍN: {1/max(p_late, 1-p_late):.2f}</span></div></div>
                 </div>
@@ -479,11 +480,16 @@ else:
                     html_boveda_lol = f"""
                     <div class="boveda-board">
                     <div class="league-title">🏆 {league_name}</div>
-                    <div class="boveda-row"><div class="w-col-1">⭐ GANADOR</div><div class="w-col-2">Base: {wr1*100:.0f}%<br>Base: {wr2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">{n1 if p_gb>=0.5 else n2} ({max(p_gb, 1-p_gb)*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/max(p_gb, 1-p_gb):.2f}</span></div></div>
-                    <div class="boveda-row"><div class="w-col-1">🩸 1RA SANGRE</div><div class="w-col-2">Oro@15: {gold1_15:+.0f}<br>Oro@15: {gold2_15:+.0f}</div><div class="w-col-3"><span class="w-pred">{n1 if p_fb>=0.5 else n2} ({max(p_fb, 1-p_fb)*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/max(p_fb, 1-p_fb):.2f}</span></div></div>
-                    <div class="boveda-row"><div class="w-col-1">🗼 TORRES (12.5)</div><div class="w-col-2">Estilo: {'Late' if come1>0.35 else 'Early'}<br>Estilo: {'Late' if come2>0.35 else 'Early'}</div><div class="w-col-3"><span class="w-pred">{otow} ({ptow*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/ptow:.2f}</span></div></div>
-                    <div class="boveda-row"><div class="w-col-1">⚔️ TOTAL KILLS (28.5)</div><div class="w-col-2">Avg: {k1:.1f}<br>Avg: {k2:.1f}</div><div class="w-col-3"><span class="w-pred">{ok} ({pk*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/pk:.2f}</span></div></div>
-                    <div class="boveda-row" style="border-bottom: none;"><div class="w-col-1">⏱️ TIEMPO (32.5)</div><div class="w-col-2">Avg: {time1:.1f}m<br>Avg: {time2:.1f}m</div><div class="w-col-3"><span class="w-pred">{ot} ({pt*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/pt:.2f}</span></div></div>
+                    <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 20px;">
+                        <div style="text-align: right; width: 40%;"><b>{n1}</b> <img src="{img1}" style="width:30px; vertical-align:middle; margin-left:10px;"></div>
+                        <div style="width: 20%; text-align: center; font-weight: 900; color: #334155;">VS</div>
+                        <div style="text-align: left; width: 40%;"><img src="{img2}" style="width:30px; vertical-align:middle; margin-right:10px;"> <b>{n2}</b></div>
+                    </div>
+                    <div class="boveda-row"><div class="w-col-1">⭐ GANADOR</div><div class="w-col-2">{n1}: {wr1*100:.0f}%<br>{n2}: {wr2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">{n1 if p_gb>=0.5 else n2} ({max(p_gb, 1-p_gb)*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/max(p_gb, 1-p_gb):.2f}</span></div></div>
+                    <div class="boveda-row"><div class="w-col-1">🩸 FASE EARLY (Min 15)</div><div class="w-col-2">{n1}: Oro {gold1_15:+.0f} | FB {fb1*100:.0f}%<br>{n2}: Oro {gold2_15:+.0f} | FB {fb2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">{n1 if p_fb>=0.5 else n2} ({max(p_fb, 1-p_fb)*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN FB: {1/max(p_fb, 1-p_fb):.2f}</span></div></div>
+                    <div class="boveda-row"><div class="w-col-1">🛡️ ESCALADO (Min 25+) & TORRES</div><div class="w-col-2">{n1}: Remontada {come1*100:.0f}%<br>{n2}: Remontada {come2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">Torres: {otow} ({ptow*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/ptow:.2f}</span></div></div>
+                    <div class="boveda-row"><div class="w-col-1">⚔️ TOTAL KILLS (28.5)</div><div class="w-col-2">Avg {n1}: {k1:.1f}<br>Avg {n2}: {k2:.1f}</div><div class="w-col-3"><span class="w-pred">{ok} ({pk*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/pk:.2f}</span></div></div>
+                    <div class="boveda-row" style="border-bottom: none;"><div class="w-col-1">⏱️ TIEMPO (32.5)</div><div class="w-col-2">Avg {n1}: {time1:.1f}m<br>Avg {n2}: {time2:.1f}m</div><div class="w-col-3"><span class="w-pred">{ot} ({pt*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/pt:.2f}</span></div></div>
                     </div>
                     """
                     st.markdown(html_boveda_lol.replace('\n', ' '), unsafe_allow_html=True)
