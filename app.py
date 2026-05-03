@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN CLOUD
 # ==========================================
-st.set_page_config(page_title="Quant Elite V86.0", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V87.0", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -18,8 +18,8 @@ def check_password():
 
     st.markdown("""<style>.stApp { background-color: #05080F; color: #F8FAFC; }</style>""", unsafe_allow_html=True)
     st.markdown("<div style='background: #0F172A; border: 2px solid #10B981; border-radius: 20px; padding: 30px; margin-top: 5vh; box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); text-align: center;'>", unsafe_allow_html=True)
-    st.markdown("<h2 style='color: #10B981; letter-spacing: 2px;'>⚡ QUANT TERMINAL V86.0</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748B;'>MOTOR ESCALADO LOL | DOTA TRIFÁSICO | BÓVEDA PREMIUM</p>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #10B981; letter-spacing: 2px;'>⚡ QUANT TERMINAL V87.0</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#64748B;'>BÓVEDA LOL RESTAURADA | BUG HTML DOTA CORREGIDO</p>", unsafe_allow_html=True)
     with st.form("login_form"):
         u = st.text_input("Operador")
         p = st.text_input("Clave", type="password")
@@ -133,6 +133,19 @@ def motor_dota_trifasico(team_id, match_id=None):
     wr_total_ajustado = max(0.05, min(0.95, wr_base + mod_jugadores + mod_counters))
     return max(0.05, min(0.95, wr_total_ajustado * 0.92)), max(0.05, min(0.95, wr_total_ajustado * 0.96)), max(0.05, min(0.95, wr_total_ajustado * 1.02)), avg_time
 
+def motor_moba(wr1, wr2, mercado, opcion, linea, t1_name):
+    total_wr = wr1 + wr2 if (wr1+wr2)>0 else 1
+    prob = wr1/total_wr if t1_name in opcion else wr2/total_wr
+    if "Total" in mercado or "Duración" in mercado or "Tiempo" in mercado or "Ambos" in mercado:
+        mom = (wr1 + wr2) / 2
+        prob = 0.50 + (mom - 0.50) * 0.3 if "Más" in opcion or "SÍ" in opcion else 0.50 - (mom - 0.50) * 0.3
+    elif "Primer" in mercado or "Primera" in mercado:
+        prob = 0.50 + (( (wr1/total_wr if t1_name in opcion else wr2/total_wr) - 0.50) * 0.7)
+    elif "Carrera" in mercado:
+        var = 0.60 if "5" in mercado else 0.75 if "10" in mercado else 0.85
+        prob = 0.50 + (( (wr1/total_wr if t1_name in opcion else wr2/total_wr) - 0.50) * var)
+    return max(0.05, min(0.95, prob))
+
 # ==========================================
 # 4. EL CEREBRO QUANT LOL (ORACLE + ESCALADO)
 # ==========================================
@@ -156,12 +169,12 @@ def load_oracle_database():
         try:
             df = pd.read_csv("datos_oracle.zip", compression='zip', usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
             df.columns = df.columns.str.strip().str.lower()
-            return df, "OK (Leído desde ZIP Local)"
+            return df, "OK"
         except:
             try:
                 df = pd.read_csv("datos_oracle.zip", usecols=lambda c: c.strip().lower() in columnas_clave, low_memory=False)
                 df.columns = df.columns.str.strip().str.lower()
-                return df, "OK (Leído desde ZIP como CSV)"
+                return df, "OK"
             except: pass
     return pd.DataFrame(), "No Data"
 
@@ -236,7 +249,7 @@ st.markdown("""<style>
 # 6. SIDEBAR: CENTRO DE MANDO
 # ==========================================
 with st.sidebar:
-    st.markdown("<h2 style='text-align:center; color:#38BDF8;'>⚙️ V86.0 CORE</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; color:#38BDF8;'>⚙️ V87.0 CORE</h2>", unsafe_allow_html=True)
     st.markdown(f"<div style='text-align:center; background:#1E293B; padding:15px; border-radius:10px; border:1px solid #334155; margin-bottom:20px;'>Bankroll<br><span style='color:#10B981; font-weight:900; font-size:24px;'>{bank_actual} U</span></div>", unsafe_allow_html=True)
     
     juegos = {"League of Legends": "lol", "Dota 2": "dota2", "Valorant": "valorant", "Mobile Legends": "mlbb"}
@@ -288,28 +301,32 @@ else:
             else:
                 wr1, f1 = fetch_historical_data_general(slug, t1['id']); wr2, f2 = fetch_historical_data_general(slug, t2['id'])
 
+            placas_t1 = "".join([f"<span class='tower-plate {x}'></span>" for x in f1])
+            placas_t2 = "".join([f"<span class='tower-plate {x}'></span>" for x in f2])
+
+# SIN INDENTACIÓN PARA EVITAR BUG DE MARKDOWN
             st.markdown(f"""
 <div class="glass-card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <div style="font-size: 13px; color: #94A3B8; font-weight: bold;">🏆 {league_name}</div>
-        <div>{badge}</div>
-    </div>
-    <div style="display: flex; justify-content: space-around; align-items: center; text-align: center;">
-        <div style="width: 35%;">
-            <div style="font-size:15px; font-weight:bold;">{t1['name']}</div>
-            <img src="{t1.get('image_url','')}" class="team-logo"><br>
-            <div class="winrate-text">{wr1*100:.0f}%</div><br>
-            <div style="margin-top:5px;">{"".join([f"<div class='tower-plate {x}'></div>" for x in f1])}</div>
-        </div>
-        <div style="font-size: 26px; font-weight: bold; color: #334155;">VS</div>
-        <div style="width: 35%;">
-            <div style="font-size:15px; font-weight:bold;">{t2['name']}</div>
-            <img src="{t2.get('image_url','')}" class="team-logo"><br>
-            <div class="winrate-text">{wr2*100:.0f}%</div><br>
-            <div style="margin-top:5px;">{"".join([f"<div class='tower-plate {x}'></div>" for x in f2])}</div>
-        </div>
-    </div>
-    {stream_html}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+<div style="font-size: 13px; color: #94A3B8; font-weight: bold;">🏆 {league_name}</div>
+<div>{badge}</div>
+</div>
+<div style="display: flex; justify-content: space-around; align-items: center; text-align: center;">
+<div style="width: 35%;">
+<div style="font-size:15px; font-weight:bold;">{t1['name']}</div>
+<img src="{t1.get('image_url','')}" class="team-logo"><br>
+<div class="winrate-text">{wr1*100:.0f}%</div><br>
+<div style="margin-top:5px;">{placas_t1}</div>
+</div>
+<div style="font-size: 26px; font-weight: bold; color: #334155;">VS</div>
+<div style="width: 35%;">
+<div style="font-size:15px; font-weight:bold;">{t2['name']}</div>
+<img src="{t2.get('image_url','')}" class="team-logo"><br>
+<div class="winrate-text">{wr2*100:.0f}%</div><br>
+<div style="margin-top:5px;">{placas_t2}</div>
+</div>
+</div>
+{stream_html}
 </div>
 """, unsafe_allow_html=True)
 
@@ -402,6 +419,8 @@ else:
             opp = m.get('opponents', [])
             if len(opp) < 2: continue
             t1, t2 = opp[0]['opponent'], opp[1]['opponent']
+            league_name = m.get('league', {}).get('name', 'Competición')
+            n1, n2 = t1['name'][:10], t2['name'][:10]
             
             if juego_label == "Dota 2":
                 e1, mid1, l1, avg1 = motor_dota_trifasico(t1['id'], m.get('id'))
@@ -411,19 +430,46 @@ else:
                 
                 st.markdown(f"""
 <div class="boveda-board">
-    <div class="league-title">🏆 {m.get('league', {}).get('name', '')}</div>
-    <div class="boveda-row"><div class="w-col-1">🛡️ EARLY (10 Kills)</div><div class="w-col-2">{t1['name']}: {e1*100:.0f}%<br>{t2['name']}: {e2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">FAV: {t1['name'] if p_early>0.5 else t2['name']}</span><br><span class="w-cota">COTA MÍN: {1/max(p_early, 1-p_early):.2f}</span></div></div>
-    <div class="boveda-row" style="border-bottom:none;"><div class="w-col-1">🏰 LATE (Ganador)</div><div class="w-col-2">{t1['name']}: {l1*100:.0f}%<br>{t2['name']}: {l2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">FAV: {t1['name'] if p_late>0.5 else t2['name']}</span><br><span class="w-cota">COTA MÍN: {1/max(p_late, 1-p_late):.2f}</span></div></div>
+<div class="league-title">🏆 {league_name}</div>
+<div class="boveda-row"><div class="w-col-1">🛡️ EARLY (10 Kills)</div><div class="w-col-2">{n1}: {e1*100:.0f}%<br>{n2}: {e2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">FAV: {n1 if p_early>0.5 else n2}</span><br><span class="w-cota">COTA MÍN: {1/max(p_early, 1-p_early):.2f}</span></div></div>
+<div class="boveda-row" style="border-bottom:none;"><div class="w-col-1">🏰 LATE (Ganador)</div><div class="w-col-2">{n1}: {l1*100:.0f}%<br>{n2}: {l2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">FAV: {n1 if p_late>0.5 else n2}</span><br><span class="w-cota">COTA MÍN: {1/max(p_late, 1-p_late):.2f}</span></div></div>
 </div>
 """, unsafe_allow_html=True)
             elif juego_label == "League of Legends":
                 wr1, f1, k1, tow1, optow1, drg1, bar1, fb1, time1, gold1_15, conv1, come1 = get_team_stats(t1['name'], t1['id'], df_oracle) 
                 wr2, f2, k2, tow2, optow2, drg2, bar2, fb2, time2, gold2_15, conv2, come2 = get_team_stats(t2['name'], t2['id'], df_oracle) 
-                st.markdown(f"""
+                
+                has_data = (k1 > 0 and k2 > 0)
+                if has_data:
+                    exp_time = (time1 + time2) / 2
+                    exp_k = k1 + k2; exp_tow = tow1 + optow1; exp_drg = drg1 + drg2; exp_bar = bar1 + bar2
+                    
+                    mod_time, mod_obj = 0, 0
+                    if come1 > 0.35 and come2 > 0.35: mod_time, mod_obj = 2.0, 1.5 
+                    elif conv1 > 0.55 and conv2 > 0.55: mod_time, mod_obj = -2.0, -1.0 
+                    
+                    adj_time = exp_time + mod_time
+                    adj_k = exp_k + (mod_obj * 2)
+                    adj_tow = exp_tow + mod_obj
+                    
+                    p_gb = wr1 / (wr1+wr2)
+                    p_fb = fb1 / (fb1+fb2 if (fb1+fb2)>0 else 1)
+                    p_time = max(0.05, min(0.95, 0.50 + (adj_time - 32.5) * 0.05))
+                    p_k = max(0.05, min(0.95, 0.50 + (adj_k - 28.5) * 0.03))
+                    p_tow = max(0.05, min(0.95, 0.50 + (adj_tow - 12.5) * 0.10))
+                    
+                    def get_tot(p): return (p, "Más") if p >= 0.50 else (1 - p, "Menos")
+                    pt, ot = get_tot(p_time); pk, ok = get_tot(p_k); ptow, otow = get_tot(p_tow)
+
+                    st.markdown(f"""
 <div class="boveda-board">
-    <div class="league-title">🏆 {m.get('league', {}).get('name', '')}</div>
-    <div class="boveda-row"><div class="w-col-1">💰 ORO AL MIN 15</div><div class="w-col-2">{t1['name']}: {gold1_15:+.0f}<br>{t2['name']}: {gold2_15:+.0f}</div><div class="w-col-3"><span class="w-pred">FAV: {t1['name'] if gold1_15 > gold2_15 else t2['name']}</span></div></div>
-    <div class="boveda-row"><div class="w-col-1">🩸 PRIMERA SANGRE</div><div class="w-col-2">{t1['name']}: {fb1*100:.0f}%<br>{t2['name']}: {fb2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">FAV: {t1['name'] if fb1 > fb2 else t2['name']}</span></div></div>
-    <div class="boveda-row" style="border-bottom:none;"><div class="w-col-1">🛡️ RESILIENCIA (Comeback)</div><div class="w-col-2">{t1['name']}: {come1*100:.0f}%<br>{t2['name']}: {come2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">Late: {t1['name'] if come1 > come2 else t2['name']}</span></div></div>
+<div class="league-title">🏆 {league_name}</div>
+<div class="boveda-row"><div class="w-col-1">⭐ GANADOR</div><div class="w-col-2">Base: {wr1*100:.0f}%<br>Base: {wr2*100:.0f}%</div><div class="w-col-3"><span class="w-pred">{n1 if p_gb>=0.5 else n2} ({max(p_gb, 1-p_gb)*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/max(p_gb, 1-p_gb):.2f}</span></div></div>
+<div class="boveda-row"><div class="w-col-1">🩸 1RA SANGRE</div><div class="w-col-2">Oro@15: {gold1_15:+.0f}<br>Oro@15: {gold2_15:+.0f}</div><div class="w-col-3"><span class="w-pred">{n1 if p_fb>=0.5 else n2} ({max(p_fb, 1-p_fb)*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/max(p_fb, 1-p_fb):.2f}</span></div></div>
+<div class="boveda-row"><div class="w-col-1">🗼 TORRES (12.5)</div><div class="w-col-2">Estilo: {'Late' if come1>0.35 else 'Early'}<br>Estilo: {'Late' if come2>0.35 else 'Early'}</div><div class="w-col-3"><span class="w-pred">{otow} ({ptow*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/ptow:.2f}</span></div></div>
+<div class="boveda-row"><div class="w-col-1">⚔️ TOTAL KILLS (28.5)</div><div class="w-col-2">Avg: {k1:.1f}<br>Avg: {k2:.1f}</div><div class="w-col-3"><span class="w-pred">{ok} ({pk*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/pk:.2f}</span></div></div>
+<div class="boveda-row" style="border-bottom: none;"><div class="w-col-1">⏱️ TIEMPO (32.5)</div><div class="w-col-2">Avg: {time1:.1f}m<br>Avg: {time2:.1f}m</div><div class="w-col-3"><span class="w-pred">{ot} ({pt*100:.0f}%)</span><br><span class="w-cota">EXIGIR C.MÍN: {1/pt:.2f}</span></div></div>
 </div>
 """, unsafe_allow_html=True)
+                else:
+                    st.info(f"Faltan datos de Oracle para {n1} vs {n2}")
