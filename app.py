@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN CLOUD
 # ==========================================
-st.set_page_config(page_title="Quant Elite V88.1", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V88.2", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -20,8 +20,8 @@ def check_password():
     
     html_login = """
     <div style='background: #0F172A; border: 2px solid #10B981; border-radius: 20px; padding: 30px; margin-top: 5vh; box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); text-align: center;'>
-    <h2 style='color: #10B981; letter-spacing: 2px;'>⚡ QUANT TERMINAL V88.1</h2>
-    <p style='color:#64748B;'>BÓVEDA PREMIUM LOL 2.0 | MIN 15 Y 25 VISIBLES | DOTA INTACTO</p>
+    <h2 style='color: #10B981; letter-spacing: 2px;'>⚡ QUANT TERMINAL V88.2</h2>
+    <p style='color:#64748B;'>BÓVEDA LOL 2.0 | BUG VALUE-ERROR CORREGIDO</p>
     </div>
     """
     st.markdown(html_login.replace('\n', ' '), unsafe_allow_html=True)
@@ -152,7 +152,7 @@ def motor_moba(wr1, wr2, mercado, opcion, linea, t1_name):
     return max(0.05, min(0.95, prob))
 
 # ==========================================
-# 4. EL CEREBRO QUANT LOL (ORACLE + ESCALADO)
+# 4. EL CEREBRO QUANT LOL (BUG CORREGIDO)
 # ==========================================
 @st.cache_data(ttl=21600, show_spinner=False)
 def fetch_historical_data_general(game_slug, team_id):
@@ -184,9 +184,10 @@ def load_oracle_database():
     return pd.DataFrame(), "No Data"
 
 def get_team_stats(team_name, team_id, df_completo):
+    # CIRUGÍA: Exactamente 12 variables de retorno en los fallbacks
     if df_completo.empty: 
         wr, form = fetch_historical_data_general("lol", team_id)
-        return wr, form, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0.0
+        return wr, form, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0.0
     
     basura = ['esports', 'challengers', 'academy', 'gaming', 'club', 'sports', 'team']
     words = [w for w in team_name.lower().split() if w not in basura and len(w) > 2]
@@ -198,7 +199,7 @@ def get_team_stats(team_name, team_id, df_completo):
     
     if df_team.empty:
         wr, form = fetch_historical_data_general("lol", team_id)
-        return wr, form, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0.0
+        return wr, form, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0.0
     
     if 'golddiffat15' in df_team.columns:
         ahead = df_team[df_team['golddiffat15'] > 0]
@@ -254,7 +255,7 @@ st.markdown("""<style>
 # 6. SIDEBAR: CENTRO DE MANDO
 # ==========================================
 with st.sidebar:
-    st.markdown("<h2 style='text-align:center; color:#38BDF8;'>⚙️ V88.1 CORE</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; color:#38BDF8;'>⚙️ V88.2 CORE</h2>", unsafe_allow_html=True)
     st.markdown(f"<div style='text-align:center; background:#1E293B; padding:15px; border-radius:10px; border:1px solid #334155; margin-bottom:20px;'>Bankroll<br><span style='color:#10B981; font-weight:900; font-size:24px;'>{bank_actual} U</span></div>", unsafe_allow_html=True)
     
     juegos = {"League of Legends": "lol", "Dota 2": "dota2", "Valorant": "valorant", "Mobile Legends": "mlbb"}
