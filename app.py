@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 # ==========================================
 # 1. SEGURIDAD Y CONFIGURACIÓN CLOUD
 # ==========================================
-st.set_page_config(page_title="Quant Elite V88.9 - Full Lol Core", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Quant Elite V88.10 - Full Operativa", layout="wide", initial_sidebar_state="expanded")
 
 def check_password():
     token = st.query_params.get("token", "")
@@ -20,8 +20,8 @@ def check_password():
     
     html_login = """
     <div style='background: #0F172A; border: 2px solid #10B981; border-radius: 20px; padding: 30px; margin-top: 5vh; box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); text-align: center;'>
-    <h2 style='color: #10B981; letter-spacing: 2px;'>⚡ QUANT TERMINAL V88.9</h2>
-    <p style='color:#64748B;'>LOL PURE QUANT | INTERFAZ RESTAURADA | ANALÍTICA TOTAL</p>
+    <h2 style='color: #10B981; letter-spacing: 2px;'>⚡ QUANT TERMINAL V88.10</h2>
+    <p style='color:#64748B;'>LOL PURE QUANT | CALCULADORA TOTAL | COTAS MÍNIMAS BÓVEDA</p>
     </div>
     """
     st.markdown(html_login.replace('\n', ' '), unsafe_allow_html=True)
@@ -67,7 +67,7 @@ def call_api_live(endpoint, params_str=""):
     except: return []
 
 # ==========================================
-# 3. EL CEREBRO QUANT LOL 
+# 3. EL CEREBRO QUANT LOL (90/10 + 60 DÍAS)
 # ==========================================
 @st.cache_data(ttl=28800, show_spinner=False)
 def load_oracle_database():
@@ -82,34 +82,30 @@ def load_oracle_database():
 
 def get_team_stats(team_name, team_id, df_completo):
     if df_completo.empty: return 0.5, ['unknown']*5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0
-    core_name = team_name.lower().split()[0]
-    df_team = df_completo[(df_completo['teamname'].str.lower().str.contains(core_name, na=False)) & (df_completo['position'].str.contains('team', case=False, na=False))].copy()
-    df_team['date'] = pd.to_datetime(df_team['date'], errors='coerce')
-    df_team = df_team.sort_values(by='date', ascending=False).head(15) 
+    core = team_name.lower().split()[0]
+    df_t = df_completo[(df_completo['teamname'].str.lower().str.contains(core, na=False)) & (df_completo['position'].str.contains('team', case=False, na=False))].copy()
+    df_t['date'] = pd.to_datetime(df_t['date'], errors='coerce')
+    df_t = df_t.sort_values(by='date', ascending=False).head(15)
+    if df_t.empty: return 0.5, ['unknown']*5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0
     
-    if df_team.empty: return 0.5, ['unknown']*5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0
-    
-    sigma_time = df_team['gamelength'].std() / 60.0 if len(df_team) > 2 else 0.0
-    
-    # Cálculo de Remontada
-    ahead = df_team[df_team['golddiffat15'] > 0]
-    conv_rate = len(ahead[ahead['result'] == 1]) / len(ahead) if not ahead.empty else 0.5
-    behind = df_team[df_team['golddiffat15'] <= 0]
-    comeback_rate = len(behind[behind['result'] == 1]) / len(behind) if not behind.empty else 0.0
+    sigma = df_t['gamelength'].std() / 60.0 if len(df_t)>2 else 0.0
+    ahead = df_t[df_t['golddiffat15'] > 0]
+    conv = len(ahead[ahead['result']==1])/len(ahead) if not ahead.empty else 0.5
+    behind = df_t[df_t['golddiffat15'] <= 0]
+    come = len(behind[behind['result']==1])/len(behind) if not behind.empty else 0.1
 
-    return (df_team['result'].mean(), 
-            ['win' if r == 1 else 'loss' for r in df_team['result'].tolist()[:5]], 
-            df_team['teamkills'].mean(), df_team['towers'].mean(), df_team['opp_towers'].mean(), 
-            df_team['dragons'].mean(), df_team['barons'].mean(), df_team['firstblood'].mean(), 
-            df_team['gamelength'].mean()/60.0, df_team['golddiffat15'].mean(), conv_rate, comeback_rate, sigma_time, df_team['ckpm'].mean())
+    return (df_t['result'].mean(), ['win' if r==1 else 'loss' for r in df_t['result'].tolist()[:5]], 
+            df_t['teamkills'].mean(), df_t['towers'].mean(), df_t['opp_towers'].mean(), 
+            df_t['dragons'].mean(), df_t['barons'].mean(), df_t['firstblood'].mean(), 
+            df_t['gamelength'].mean()/60.0, df_t['golddiffat15'].mean(), conv, come, sigma, df_t['ckpm'].mean())
 
-def get_h2h_direct_history(t1_name, t2_name, df):
+def get_h2h_data(t1_name, t2_name, df):
     c1, c2 = t1_name.lower().split()[0], t2_name.lower().split()[0]
-    h2h_df = df[df['date'].isin(set(df[df['teamname'].str.lower().str.contains(c1, na=False)]['date']).intersection(set(df[df['teamname'].str.lower().str.contains(c2, na=False)]['date']))) & (df['position'].str.contains('team', case=False, na=False))].copy()
-    h2h_df['date'] = pd.to_datetime(h2h_df['date'])
-    h2h_reciente = h2h_df.sort_values(by='date', ascending=False).head(4) 
-    if not h2h_reciente.empty and (datetime.utcnow() - h2h_reciente['date'].max()).days > 60: return pd.DataFrame()
-    return h2h_reciente
+    h2h = df[df['date'].isin(set(df[df['teamname'].str.lower().str.contains(c1, na=False)]['date']).intersection(set(df[df['teamname'].str.lower().str.contains(c2, na=False)]['date']))) & (df['position'].str.contains('team', case=False, na=False))].copy()
+    h2h['date'] = pd.to_datetime(h2h['date'])
+    h2h = h2h.sort_values(by='date', ascending=False).head(4)
+    if not h2h.empty and (datetime.utcnow() - h2h['date'].max()).days > 60: return pd.DataFrame()
+    return h2h
 
 def obtener_friccion_regional(league_name):
     n = league_name.upper()
@@ -117,22 +113,22 @@ def obtener_friccion_regional(league_name):
     if "LCK" in n: return 3.0, -3.5, 1.5 
     return 0.0, 0.0, 0.0
 
-def get_player_kda_pool(team_name, df):
+def get_player_stats(team_name, df):
     core = team_name.lower().split()[0]
-    team_df = df[df['teamname'].str.lower().str.contains(core, na=False) & (~df['position'].str.contains('team', case=False, na=False))].copy()
-    if team_df.empty: return pd.DataFrame()
-    stats = team_df.groupby('playername').agg({'position': 'first', 'kills': 'mean', 'deaths': 'mean', 'assists': 'mean', 'champion': lambda x: x.value_counts().index[0]}).reset_index()
-    stats['kda'] = (stats['kills'] + stats['assists']) / stats['deaths'].replace(0, 1)
-    return stats.sort_values(by='kda', ascending=False)
+    tdf = df[df['teamname'].str.lower().str.contains(core, na=False) & (~df['position'].str.contains('team', case=False, na=False))].copy()
+    if tdf.empty: return pd.DataFrame()
+    st = tdf.groupby('playername').agg({'position':'first','kills':'mean','deaths':'mean','assists':'mean','champion':lambda x: x.value_counts().index[0]}).reset_index()
+    st['kda'] = (st['kills']+st['assists'])/st['deaths'].replace(0,1)
+    return st.sort_values(by='kda', ascending=False)
 
 # ==========================================
 # 4. SIDEBAR Y TEMAS
 # ==========================================
 with st.sidebar:
-    st.markdown("<h2 style='text-align:center; color:#10B981;'>⚙️ V88.9 LOL CORE</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; color:#10B981;'>⚙️ V88.10 LOL</h2>", unsafe_allow_html=True)
     tema = st.selectbox("🎨 TEMA", ["Azul Oscuro", "Blanco Cuántico", "Verde Hacker"])
-    nuevo_b = st.number_input("Bankroll Base (U)", value=float(bank_actual))
-    if st.button("💾 Guardar"): gestionar_bank(nuevo_b); st.rerun()
+    nuevo_bank = st.number_input("Caja Base (U)", value=float(bank_actual))
+    if st.button("💾 Guardar"): gestionar_bank(nuevo_bank); st.rerun()
 
 paletas = {
     "Blanco Cuántico": ["#F8FAFC", "#FFFFFF", "#E2E8F0", "#0F172A", "#2563EB"],
@@ -155,11 +151,11 @@ st.markdown(f"""<style>
     .boveda-board {{ background-color: {c_card}; border: 1px solid {c_border}; border-radius: 14px; padding: 20px; margin-bottom: 20px; }}
     .boveda-row {{ display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid {c_border}; }}
     .w-pred {{ font-weight: 900; color: {c_acc}; font-size: 14px; }}
-    .w-cota {{ font-weight: bold; color: #EF4444; font-size: 11px; background: {c_bg}; padding: 3px 6px; border-radius: 4px; border: 1px solid #EF4444; }}
+    .w-cota {{ font-weight: bold; color: #EF4444; font-size: 11px; background: {c_bg}; padding: 3px 6px; border-radius: 4px; border: 1px solid #EF4444; margin-top: 4px; display: inline-block; }}
 </style>""", unsafe_allow_html=True)
 
 # ==========================================
-# 5. ESTRUCTURA CENTRAL
+# 5. RADAR Y BÓVEDA
 # ==========================================
 st.markdown(f"<h1 style='text-align: center; color: {c_text};'>📡 RADAR TÁCTICO: LEAGUE OF LEGENDS</h1>", unsafe_allow_html=True)
 tab_radar, tab_boveda, tab_stats = st.tabs(["📡 PANEL EN VIVO", "📊 BÓVEDA PREMIUM", "🧬 ANALÍTICA PRO"])
@@ -167,118 +163,124 @@ tab_radar, tab_boveda, tab_stats = st.tabs(["📡 PANEL EN VIVO", "📊 BÓVEDA 
 df_oracle = load_oracle_database()
 partidos = call_api_live("matches", "filter[status]=running,not_started&sort=begin_at&per_page=15")
 
-if not partidos: st.info("Sincronizando servidores...")
+if not partidos: st.info("Sincronizando...")
 else:
     with tab_radar:
         for i, m in enumerate(partidos):
             opp = m.get('opponents', [])
             if len(opp) < 2: continue
             t1, t2 = opp[0]['opponent'], opp[1]['opponent']
-            league_name = m.get('league', {}).get('name', 'Competición')
-            league_img = m.get('league', {}).get('image_url', '')
-            
-            # Datos Oracle
-            wr1, f1, k1, tow1, optow1, drg1, bar1, fb1, time1, gold1_15, conv1, come1, sig1, ckpm1 = get_team_stats(t1['name'], t1['id'], df_oracle) 
-            wr2, f2, k2, tow2, optow2, drg2, bar2, fb2, time2, gold2_15, conv2, come2, sig2, ckpm2 = get_team_stats(t2['name'], t2['id'], df_oracle) 
+            l_name = m.get('league', {}).get('name', 'Competición')
+            l_img = m.get('league', {}).get('image_url', '')
 
-            # Placas restauradas
-            placas_t1 = "".join([f"<span class='tower-plate {x}'></span>" for x in f1])
-            placas_t2 = "".join([f"<span class='tower-plate {x}'></span>" for x in f2])
+            # Oracle Data
+            wr1, f1, k1, tow1, otow1, drg1, bar1, fb1, time1, gold1, conv1, come1, sig1, ckpm1 = get_team_stats(t1['name'], t1['id'], df_oracle) 
+            wr2, f2, k2, tow2, otow2, drg2, bar2, fb2, time2, gold2, conv2, come2, sig2, ckpm2 = get_team_stats(t2['name'], t2['id'], df_oracle) 
+
+            placas1 = "".join([f"<span class='tower-plate {x}'></span>" for x in f1])
+            placas2 = "".join([f"<span class='tower-plate {x}'></span>" for x in f2])
             
-            # Stream Link restaurado
             streams = m.get('streams_list', [])
-            video_url = streams[0].get('raw_url', '#') if streams else '#'
-            stream_html = f"<a href='{video_url}' target='_blank' class='stream-btn'>📺 Ver Transmisión</a>" if video_url != '#' else ""
+            video = streams[0].get('raw_url', '#') if streams else '#'
+            btn_html = f"<a href='{video}' target='_blank' class='stream-btn'>📺 Ver Transmisión</a>" if video != '#' else ""
 
             st.markdown(f"""<div class="glass-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <div style="font-size: 13px; font-weight: bold;"><img src="{league_img}" width="20" style="vertical-align:middle; margin-right:5px;">{league_name}</div>
+                    <div style="font-size: 13px; font-weight: bold;"><img src="{l_img}" width="20" style="vertical-align:middle; margin-right:5px;">{l_name}</div>
                     <div class="badge-live">LIVE</div>
                 </div>
                 <div style="display: flex; justify-content: space-around; text-align: center; align-items: center;">
-                    <div style="width: 35%;">
-                        <b>{t1['name']}</b><br>
-                        <img src="{t1.get('image_url','')}" class="team-logo"><br>
-                        <div class="winrate-text">{wr1*100:.0f}%</div><br>
-                        <div style="margin-top:5px;">{placas_t1}</div>
-                    </div>
+                    <div style="width: 35%;"><b>{t1['name']}</b><br><img src="{t1.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr1*100:.0f}%</div><br>{placas1}</div>
                     <div style="font-size: 26px; font-weight: 900; color: {c_acc};">VS</div>
-                    <div style="width: 35%;">
-                        <b>{t2['name']}</b><br>
-                        <img src="{t2.get('image_url','')}" class="team-logo"><br>
-                        <div class="winrate-text">{wr2*100:.0f}%</div><br>
-                        <div style="margin-top:5px;">{placas_t2}</div>
-                    </div>
+                    <div style="width: 35%;"><b>{t2['name']}</b><br><img src="{t2.get('image_url','')}" class="team-logo"><br><div class="winrate-text">{wr2*100:.0f}%</div><br>{placas2}</div>
                 </div>
-                {stream_html}
+                {btn_html}
             </div>""", unsafe_allow_html=True)
 
-            with st.expander("🛠️ CALCULADORA QUANT (90/10)"):
-                m_sel = st.selectbox("Mercado", ["Ganador", "Total Torres", "Total Kills", "Duración", "Primera Sangre"], key=f"m_{i}")
-                lin = st.number_input("Línea", value=32.5 if m_sel=="Duración" else 12.5 if m_sel=="Total Torres" else 28.5, key=f"l_{i}")
-                cuo = st.number_input("Cuota Casino", value=1.85, key=f"c_{i}")
-
-                # Lógica 90/10
-                df_h2h = get_h2h_direct_history(t1['name'], t2['name'], df_oracle)
-                peso_h2h = 0.10 if not df_h2h.empty else 0.0
+            with st.expander("🛠️ CALCULADORA QUANT (RESTAURADA)"):
+                c1, c2 = st.columns(2)
+                m_sel = c1.selectbox("Mercado", ["Ganador", "Total Torres", "Total Kills", "Duración", "Primera Sangre"], key=f"sel_{i}")
                 
-                if peso_h2h > 0:
-                    h2h_wr = df_h2h[df_h2h['teamname'].str.contains(t1['name'].split()[0], case=False, na=False)]['result'].mean()
-                    h2h_time, h2h_k, h2h_tow, h2h_ckpm = df_h2h['gamelength'].mean()/60.0, df_h2h['teamkills'].mean(), df_h2h['towers'].mean(), df_h2h['ckpm'].mean()
-                    h2h_fb = df_h2h[df_h2h['teamname'].str.contains(t1['name'].split()[0], case=False, na=False)]['firstblood'].mean()
-                else: h2h_wr, h2h_time, h2h_k, h2h_tow, h2h_ckpm, h2h_fb = 0.5, time1, k1, tow1, (ckpm1+ckpm2)/2, fb1
+                # Restauración de Selectores de Equipo y Más/Menos
+                if m_sel in ["Ganador", "Primera Sangre"]:
+                    op_sel = c2.radio("A favor de:", [t1['name'], t2['name']], key=f"op_{i}", horizontal=True)
+                else:
+                    op_sel = c2.radio("Opción:", ["Más (+)", "Menos (-)"], key=f"op_{i}", horizontal=True)
 
-                b_wr = (wr1 * 0.9) + (h2h_wr * 0.1)
-                b_time = (((time1+time2)/2) * 0.9) + (h2h_time * 0.1)
-                b_tow = ((tow1+optow1) * 0.9) + (h2h_tow * 0.1)
-                b_ckpm = (((ckpm1+ckpm2)/2) * 0.9) + (h2h_ckpm * 0.1)
-                b_fb = (fb1 * 0.9) + (h2h_fb * 0.1)
+                l1, l2 = st.columns(2)
+                lin = l1.number_input("Línea", value=32.5 if m_sel=="Duración" else 12.5 if m_sel=="Total Torres" else 28.5, key=f"l_{i}")
+                cuo = l2.number_input("Cuota Casino", value=1.85, key=f"c_{i}")
 
-                z_t, z_k, z_tow = obtener_friccion_regional(league_name)
+                # Matemática 90/10
+                df_h = get_h2h_data(t1['name'], t2['name'], df_oracle)
+                p_h = 0.10 if not df_h.empty else 0.0
+                if p_h > 0:
+                    h_wr = df_h[df_h['teamname'].str.contains(t1['name'].split()[0], case=False, na=False)]['result'].mean()
+                    h_time, h_k, h_tow, h_ckpm = df_h['gamelength'].mean()/60.0, df_h['teamkills'].mean(), df_h['towers'].mean(), df_h['ckpm'].mean()
+                    h_fb = df_h[df_h['teamname'].str.contains(t1['name'].split()[0], case=False, na=False)]['firstblood'].mean()
+                else: h_wr, h_time, h_k, h_tow, h_ckpm, h_fb = 0.5, time1, k1, tow1, (ckpm1+ckpm2)/2, fb1
+
+                b_wr = (wr1 * 0.9) + (h_wr * 0.1)
+                b_time = (((time1+time2)/2)*0.9) + (h_time*0.1)
+                b_tow = ((tow1+otow1)*0.9) + (h_tow*0.1)
+                b_ck = (((ckpm1+ckpm2)/2)*0.9) + (h_ckpm*0.1)
+                b_fb = (fb1*0.9) + (h_fb*0.1)
+
+                z_t, z_k, z_tow = obtener_friccion_regional(l_name)
                 
-                if m_sel == "Ganador": p = b_wr
-                elif m_sel == "Duración": p = 0.5 + (b_time + z_t - lin) * 0.05
-                elif m_sel == "Total Torres": p = 0.5 + (b_tow + z_tow - lin) * 0.1
-                elif m_sel == "Total Kills": p = 0.5 + (b_time * b_ckpm * 2 + z_k - lin) * 0.03
-                else: p = b_fb / (b_fb + (1-b_fb))
+                if m_sel == "Ganador": 
+                    prob = b_wr if t1['name'] in op_sel else (1-b_wr)
+                elif m_sel == "Duración":
+                    p_raw = 0.5 + (b_time + z_t - lin)*0.05
+                    prob = p_raw if "Más" in op_sel else (1-p_raw)
+                elif m_sel == "Total Torres":
+                    p_raw = 0.5 + (b_tow + z_tow - lin)*0.1
+                    prob = p_raw if "Más" in op_sel else (1-p_raw)
+                elif m_sel == "Total Kills":
+                    p_raw = 0.5 + (b_time * b_ck * 2 + z_k - lin)*0.03
+                    prob = p_raw if "Más" in op_sel else (1-p_raw)
+                else: # Primera Sangre
+                    p_raw = b_fb / (b_fb + (1-b_fb)) if (b_fb+(1-b_fb))>0 else 0.5
+                    prob = p_raw if t1['name'] in op_sel else (1-p_raw)
 
-                p = max(0.05, min(0.95, p))
-                c_j = 1/p
-                kelly = ((cuo*p - 1)/(cuo-1)) * 0.25 * bank_actual if cuo > c_j else 0
-                color = "#10B981" if cuo > c_j else "#EF4444"
-                
-                st.markdown(f"""<div class="prob-box" style="border-color:{color};">
-                    <div class="prob-number" style="color:{color};">{p*100:.1f}%</div>
-                    <div style="font-weight:bold;">CUOTA JUSTA: {c_j:.2f} | STAKE: {max(0, kelly):.2f} U</div>
+                prob = max(0.05, min(0.95, prob))
+                c_j = 1/prob
+                kelly = ((cuo*prob - 1)/(cuo-1)) * 0.25 * bank_actual if cuo > c_j else 0
+                col_res = "#10B981" if cuo > c_j else "#EF4444"
+
+                st.markdown(f"""<div class="prob-box" style="border-color:{col_res};">
+                    <div class="prob-number" style="color:{col_res};">{prob*100:.1f}%</div>
+                    <div style="font-weight:bold;">CUOTA JUSTA (C. MÍN): {c_j:.2f} | STAKE: {max(0, kelly):.2f} U</div>
                 </div>""", unsafe_allow_html=True)
 
     with tab_boveda:
-        st.markdown(f"<h3 style='color:{c_acc};'>📋 Bóveda Premium (Analítica Total)</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='color:{c_acc};'>📊 Bóveda Premium (Cotas Mínimas Incluidas)</h3>", unsafe_allow_html=True)
         for m in partidos:
             opp = m.get('opponents', [])
             if len(opp)<2: continue
             t1, t2 = opp[0]['opponent'], opp[1]['opponent']
-            wr1, f1, k1, tow1, optow1, drg1, bar1, fb1, time1, gold1_15, conv1, come1, sig1, ckpm1 = get_team_stats(t1['name'], t1['id'], df_oracle)
-            wr2, f2, k2, tow2, optow2, drg2, bar2, fb2, time2, gold2_15, conv2, come2, sig2, ckpm2 = get_team_stats(t2['name'], t2['id'], df_oracle)
+            wr1, f1, k1, tow1, otow1, drg1, bar1, fb1, time1, gold1, conv1, come1, sig1, ckpm1 = get_team_stats(t1['name'], t1['id'], df_oracle)
+            wr2, f2, k2, tow2, otow2, drg2, bar2, fb2, time2, gold2, conv2, come2, sig2, ckpm2 = get_team_stats(t2['name'], t2['id'], df_oracle)
             
-            p_gb = wr1 / (wr1+wr2) if (wr1+wr2)>0 else 0.5
-            sem1 = "🔴" if sig1 > 4.5 else "🟢" if sig1 < 3.0 else "🟡"
+            p_win = wr1 / (wr1+wr2) if (wr1+wr2)>0 else 0.5
+            p_fb = fb1 / (fb1+fb2) if (fb1+fb2)>0 else 0.5
+            sem = "🔴" if sig1 > 4.5 else "🟢" if sig1 < 3.0 else "🟡"
             
             st.markdown(f"""<div class="boveda-board">
                 <div class="boveda-row" style="border-bottom: 2px solid {c_border};"><div><b>{t1['name']} vs {t2['name']}</b></div><div class="w-pred">{m.get('league',{}).get('name')}</div></div>
-                <div class="boveda-row"><div>⭐ GANADOR</div><div class="w-pred">{t1['name'] if p_gb>=0.5 else t2['name']} ({max(p_gb, 1-p_gb)*100:.0f}%)</div></div>
-                <div class="boveda-row"><div>🩸 FASE EARLY (Min 15)</div><div>{t1['name'][:3]}: {gold1_15:+.0f} Oro | {t2['name'][:3]}: {gold2_15:+.0f} Oro</div></div>
-                <div class="boveda-row"><div>🛡️ ESCALADO (Min 25+)</div><div class="w-pred">Remontada {t1['name'][:3]}: {come1*100:.0f}% | {t2['name'][:3]}: {come2*100:.0f}%</div></div>
-                <div class="boveda-row"><div>🗼 TORRES & KILLS</div><div>Torres: {tow1+optow1:.1f} | Kills: {k1+k2:.1f}</div></div>
-                <div class="boveda-row" style="border:none;"><div>⏱️ TIEMPO & VAR</div><div>{time1:.1f}m {sem1} | {time2:.1f}m</div></div>
+                <div class="boveda-row"><div>⭐ GANADOR</div><div class="w-pred">{t1['name'] if p_win>=0.5 else t2['name']} ({max(p_win, 1-p_win)*100:.0f}%)</div><div class="w-cota">EXIGIR C.MÍN: {1/max(p_win, 0.05):.2f}</div></div>
+                <div class="boveda-row"><div>🩸 FIRST BLOOD</div><div class="w-pred">{t1['name'] if p_fb>=0.5 else t2['name']}</div><div class="w-cota">EXIGIR C.MÍN: {1/max(p_fb, 1-p_fb, 0.05):.2f}</div></div>
+                <div class="boveda-row"><div>🛡️ ESCALADO (25+)</div><div class="w-pred">Remontada {t1['name'][:3]}: {come1*100:.0f}% | {t2['name'][:3]}: {come2*100:.0f}%</div><div class="w-cota">VAR: {sig1:.1f}</div></div>
+                <div class="boveda-row"><div>🗼 TORRES (12.5)</div><div>Proy: {tow1+otow2:.1f} estructuras</div><div class="w-cota">EXIGIR C.MÍN: {1/0.65:.2f}</div></div>
+                <div class="boveda-row" style="border:none;"><div>⏱️ TIEMPO (32.5)</div><div>{time1:.1f}m {sem} | {time2:.1f}m</div><div class="w-cota">OBJ: {drg1+bar1:.1f}</div></div>
             </div>""", unsafe_allow_html=True)
 
     with tab_stats:
-        st.subheader("🧬 Analítica Pro (H2H 60 Días)")
-        sel_p = st.selectbox("Seleccionar Encuentro", [f"{p['opponents'][0]['opponent']['name']} vs {p['opponents'][1]['opponent']['name']}" for p in partidos if len(p.get('opponents',[]))>1])
+        st.subheader("🧬 Analítica Pro")
+        sel_p = st.selectbox("Partido", [f"{p['opponents'][0]['opponent']['name']} vs {p['opponents'][1]['opponent']['name']}" for p in partidos if len(p.get('opponents',[]))>1])
         n1, n2 = sel_p.split(" vs ")
-        c1, c2 = st.columns(2)
-        with c1: st.dataframe(get_player_kda_pool(n1, df_oracle), hide_index=True)
-        with c2: st.dataframe(get_player_kda_pool(n2, df_oracle), hide_index=True)
-        st.markdown("### ⚔️ Historial H2H Reciente")
-        st.table(get_h2h_direct_history(n1, n2, df_oracle))
+        c_k1, c_k2 = st.columns(2)
+        with c_k1: st.dataframe(get_player_stats(n1, df_oracle), hide_index=True)
+        with c_k2: st.dataframe(get_player_stats(n2, df_oracle), hide_index=True)
+        st.markdown("### ⚔️ Historial H2H")
+        st.table(get_h2h_data(n1, n2, df_oracle))
